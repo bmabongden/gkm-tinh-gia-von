@@ -18,7 +18,7 @@ App chạy offline hoàn toàn trên trình duyệt (Chrome / Edge / Cốc Cốc
    - Thanh **dòng xe** (SH Mode, Vision, Lead, Wave Alpha…) phía trên danh sách: bấm để lọc nhanh theo dòng xe.
    - Nút **🔍 Mã thay thế** cạnh nhãn *Chưa mở bán*: gợi ý các mã đang bán có phần đầu giống nhất, bấm *Chọn* để thay. Nếu mã cũ còn ở bộ nhựa khác (kể cả phiên khác), app hỏi *Thay tất cả* hay *Chỉ món này*. Chọn *Thay tất cả* thì app nhớ lại và tự thay cả khi nhập file bộ nhựa mới sau này.
    - Nút **📦 Lấy tồn kho**: app tự vào KiotViet xuất danh sách hàng hóa và lấy tồn kho mới nhất, hiện cột *Tồn* cho từng món (hết hoặc thiếu thì tô đỏ). Cần cài chương trình **GKM Tồn kho** một lần trên mỗi máy: vào thư mục `tonkho`, bấm đúp `cai-dat.bat`. Địa chỉ cửa hàng (mặc định `ptxmgkk`), đăng nhập và đổi tài khoản KiotViet nằm ở nút **⚙️ Cài đặt** góc trên: bấm *Đăng nhập KiotViet* để mở một cửa sổ Edge **riêng**, đăng nhập một lần rồi đóng cửa sổ đó; *Đổi tài khoản* sẽ đăng xuất tài khoản cũ rồi mở trang đăng nhập. Chương trình không đụng tới Chrome đang dùng, không lưu mật khẩu, chỉ nhận lệnh từ chính máy đó. Gỡ: bấm đúp `go-cai-dat.bat`.
-   - Nút **🖨️ In báo giá**: in hoặc *Lưu dưới dạng PDF* báo giá cho khách (ảnh xe, danh sách món, giá bán, không có giá vốn). Cần đặt công thức giá bán trước.
+   - Nút **🖨️ In phiếu nhặt hàng**: in hoặc *Lưu dưới dạng PDF* báo giá cho khách (ảnh xe, danh sách món, giá bán, không có giá vốn). Cần đặt công thức giá bán trước.
    - Hóa đơn: món bán thấp hơn giá vốn tô cam, có nhãn *Bán lỗ* và bộ lọc *Chỉ món lỗ*.
    - Ô *Thêm sản phẩm*: gõ vài chữ của mã hoặc tên là ra gợi ý, dùng ↑ ↓ Enter để chọn.
 4. **Tính giá bán theo công thức** (+ − × ÷ +%) nằm dưới hóa đơn và dưới mỗi bộ nhựa.
@@ -35,5 +35,8 @@ Vào **⚙️ Cài đặt** → *Mật khẩu hiện giá vốn*, gõ mỗi dòn
 ## Biểu tượng trên màn hình
 Bấm đúp file `tao-bieu-tuong.bat` trong thư mục app. Màn hình Desktop sẽ có biểu tượng **GKM Tính giá vốn** (logo thẻ giá màu cam), từ sau bấm đúp vào đó để mở app.
 
-## Gửi báo giá qua Zalo
-Trong chi tiết bộ nhựa, bấm **🖼️ Ảnh báo giá (Zalo)**. App tạo một ảnh báo giá (không có giá vốn) và chép sẵn vào bộ nhớ: mở Zalo, bấm vào ô chat với khách rồi nhấn `Ctrl+V` để gửi. Có nút *Tải ảnh* nếu muốn lưu thành file. Cần đặt công thức giá bán trước, giống như khi in báo giá.
+## Gửi phiếu nhặt hàng qua Zalo
+Trong chi tiết bộ nhựa, bấm **🖼️ Ảnh phiếu nhặt (Zalo)**. App tạo ảnh danh sách mã cần nhặt (mã hàng chữ to, tên, số lượng, tồn kho, không có giá) và chép sẵn: mở Zalo, bấm vào ô chat rồi nhấn `Ctrl+V`. Có nút *Chép mã dạng chữ* để gửi dạng tin nhắn, và *Tải ảnh* để lưu file.
+
+## In phiếu nhặt hàng
+Trong chi tiết bộ nhựa, bấm **🖨️ In phiếu nhặt hàng** để in danh sách mã đi nhặt nhựa trong kho: ô tích, mã hàng chữ to, tên, số lượng, tồn kho (nếu đã lấy) và cột ghi chú. Phiếu không có giá. Món thiếu hàng hoặc chưa mở bán được tô xám để dễ thấy.
