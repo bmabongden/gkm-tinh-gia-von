@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '2.3';
+const APP_VERSION = '2.4';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -686,7 +686,7 @@ function renderPriceList(kind, el) {
     const id = b.closest('[data-id]').dataset.id, p = S.prices.find(x => x.id === id);
     const a = b.dataset.a;
     if (a === 'def') { LS.set('defPrice.' + kind, id); if (kind === 'kit') LS.set('kitPrice', id); refreshAll(); }
-    if (a === 'upd') { const f = await pickFile(); if (f) importPrices(f, id); }
+    if (a === 'upd') { const f = await pickFile(); if (f) importPrices(f, id, kind); }
     if (a === 'ren') { const n = await promptBox('Đổi tên phiên', 'Tên mới', p.name); if (n) { p.name = n; await DB.put('prices', p); refreshAll(); } }
     if (a === 'mv') {
       const to = kind === 'inv' ? 'kit' : 'inv';
@@ -1121,7 +1121,21 @@ function renderKitSelects() {
   ps.innerHTML = kitTables.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('') + `<option value="file">Giá có sẵn trong file bộ nhựa</option>`;
   ps.value = [...ps.options].some(o => o.value === pcur) ? pcur : (kitTables.length ? (defaultPriceId('kit') || kitTables[0].id) : 'file');
   $('#kitNoPrice').classList.toggle('hide', !!kitTables.length);
+  renderKitPriceInfo();
 }
+/** Dòng thông tin + nút cập nhật bảng giá vốn bộ nhựa đang chọn (đặt ngay cạnh ô chọn) */
+function renderKitPriceInfo() {
+  const el = $('#kitPriceInfo'); if (!el) return;
+  const p = S.prices.find(x => x.id === $('#kitPriceSel').value && sessKind(x) === 'kit');
+  el.innerHTML = p ? `💾 Phiên <b>${esc(p.name)}</b>: ${p.items.length.toLocaleString('vi-VN')} mã, ${p.updatedAt ? 'cập nhật' : 'nhập'} lúc ${fmtTime(p.updatedAt || p.createdAt)}` : 'Chưa chọn bảng giá vốn bộ nhựa';
+  $('#kitPriceUpd').classList.toggle('hide', !p);
+}
+async function updKitPrice() {
+  const id = $('#kitPriceSel').value, p = S.prices.find(x => x.id === id && sessKind(x) === 'kit');
+  if (!p) return newKitPrice();
+  const f = await pickFile(); if (f) importPrices(f, id, 'kit');
+}
+async function newKitPrice() { const f = await pickFile(); if (f) importPrices(f, null, 'kit'); }
 function renderKits() {
   renderKitSelects();
   const m = makeMatcher($('#kitSearch').value, 5);
@@ -1769,6 +1783,7 @@ async function init() {
   S.kitLine = LS.get('kitLine', '');
   $('#kitSessSel').onchange = renderKits;
   $('#kitPriceSel').onchange = () => { LS.set('kitPrice', $('#kitPriceSel').value); S.kitView ? renderKitDetail() : renderKits(); };
+  $('#kitPriceUpd').onclick = updKitPrice; $('#kitPriceNew').onclick = newKitPrice;
   let kt; $('#kitSearch').oninput = () => { clearTimeout(kt); kt = setTimeout(renderKits, 120); };
   $('#kitBack').onclick = closeKit;
   $('#kdPrint').onclick = printKitQuote;

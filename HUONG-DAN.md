@@ -43,3 +43,6 @@ Trong chi tiết bộ nhựa, bấm **🖨️ In phiếu nhặt hàng** để in
 Nút **📦 Lấy bảng giá & tồn kho KiotViet** (nút cam trên cùng, cạnh nút Làm mới) tự vào KiotViet xuất danh sách hàng hóa, rồi cùng lúc: cập nhật tồn kho, và **thay bảng giá vốn hóa đơn mặc định** bằng giá vốn, giá bán, tên hàng mới nhất. Không cần nhập tay bảng giá hóa đơn nữa. Anh chỉ tự nhập **bảng bộ nhựa** và **bảng giá Honda** (bảng giá vốn bộ nhựa).
 
 Tên chi tiết trong bộ nhựa lấy theo tên hàng trên KiotViet; mã nào KiotViet không có mới dùng tên trong file bộ nhựa.
+
+## Cập nhật bảng giá vốn bộ nhựa
+Ở đầu tab Bộ nhựa, cạnh ô **Bảng giá vốn bộ nhựa**: bấm **🔄 Cập nhật bảng giá này** để thay phiên đang chọn bằng file bảng giá Honda mới (giữ tên phiên), hoặc **➕ Phiên mới** để thêm một phiên khác. Dòng bên dưới ghi phiên đang dùng cập nhật lúc nào. Danh sách đầy đủ các phiên (đặt mặc định, đổi tên, xóa) ở cuối tab.
