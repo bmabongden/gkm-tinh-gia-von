@@ -28,3 +28,6 @@ Nút **🧹 Làm mới** góc trên: đưa mọi bộ nhựa đã sửa (mã tha
 
 ## Cập nhật bản mới
 Bấm nút **🔄 Cập nhật** góc trên bên phải (cần có mạng, dùng Chrome hoặc Edge). Nếu có bản mới, bấm **⚡ Cập nhật ngay**, chọn thư mục app (thư mục đang chứa `index.html`) và bấm *Cho phép* khi trình duyệt hỏi. App tự tải bản mới, ghi đè đúng chỗ và mở lại. Bảng giá, bộ nhựa, ảnh xe vẫn giữ nguyên.
+
+## Mật khẩu hiện giá vốn
+Vào **⚙️ Cài đặt** → *Mật khẩu hiện giá vốn*, gõ mỗi dòng một mật khẩu (dùng được nhiều mật khẩu, để trống là không cần). Khi đang ẩn giá vốn, bấm **👁 Hiện giá vốn** phải nhập đúng một mật khẩu. Tồn kho vẫn hiện khi ẩn giá vốn. Quên mật khẩu: ở ô nhập bấm *Quên mật khẩu?* để xem gợi ý, hoặc chọn thư mục app để xóa hết mật khẩu rồi đặt lại.

@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1153,7 +1153,7 @@ function renderKits() {
     return hdr + `<div class="kit" data-s="${s.id}" data-k="${k.id}">
       <div class="img">${img ? `<img loading="lazy" decoding="async" src="${blobUrl(img)}" alt="">` : '🏍️'}</div>
       <div class="b"><div class="nm">${esc(k.name)}</div>
-      <div class="small muted">${k.parts.length} món${edited ? ' · <span style="color:var(--warn)">đã chỉnh sửa</span>' : ''}<span class="costcol">${c.miss ? ` · <span style="color:var(--bad)">${c.miss} thiếu giá</span>` : ''}${c.notSold ? ` · <span style="color:#7c3aed">${c.notSold} chưa mở bán</span>` : ''}${loadStock() ? (c.short ? ` · <span style="color:#b91c1c;font-weight:600">${c.short} món thiếu hàng</span>` : ' · <span style="color:#15803d">đủ hàng</span>') : ''}</span></div>
+      <div class="small muted">${k.parts.length} món${edited ? ' · <span style="color:var(--warn)">đã chỉnh sửa</span>' : ''}<span class="costcol">${c.miss ? ` · <span style="color:var(--bad)">${c.miss} thiếu giá</span>` : ''}${c.notSold ? ` · <span style="color:#7c3aed">${c.notSold} chưa mở bán</span>` : ''}</span>${loadStock() ? (c.short ? ` · <span style="color:#b91c1c;font-weight:600">${c.short} món thiếu hàng</span>` : ' · <span style="color:#15803d">đủ hàng</span>') : ''}</div>
       <div class="tt costcol">${fmt(c.total)}</div><div class="tt sellcol">${(() => { const v = sellPrice(c.total, sellCfg('kit')); return v == null ? '' : fmt(v); })()}</div></div></div>`;
   }).join('');
   $$('.kit', grid).forEach(el => el.onclick = () => openKit(el.dataset.s, el.dataset.k));
@@ -1212,19 +1212,19 @@ function renderKitDetail() {
   $('#kdSellTotal').textContent = sellTotal == null ? 'Chưa đặt' : fmt(sellTotal);
   const sc = perPart ? 'sellcol' : 'hide';
   const added = new Set(diffLines(k.orig, k.parts).added.map(x => x.id));
-  $('#kdTable').innerHTML = `<thead><tr><th class="n">#</th><th>Mã hàng</th><th>Tên chi tiết</th><th class="n">SL</th>${loadStock() ? '<th class="n costcol" title="Tồn kho KiotViet">Tồn</th>' : ''}<th class="n costcol">Giá vốn</th><th class="n costcol">Thành tiền</th><th class="n ${sc}">Đơn giá</th><th class="n ${sc}">Thành tiền</th><th class="costcol"></th><th class="costcol"></th></tr></thead>
+  $('#kdTable').innerHTML = `<thead><tr><th class="n">#</th><th>Mã hàng</th><th>Tên chi tiết</th><th class="n">SL</th>${loadStock() ? '<th class="n" title="Tồn kho KiotViet">Tồn</th>' : ''}<th class="n costcol">Giá vốn</th><th class="n costcol">Thành tiền</th><th class="n ${sc}">Đơn giá</th><th class="n ${sc}">Thành tiền</th><th class="costcol"></th><th class="costcol"></th></tr></thead>
   <tbody>${c.rows.map(r => `<tr class="${r.cost == null ? 'miss' : r.from === 'manual' ? 'manual' : ''}">
     <td class="n muted">${r.i + 1}</td>
     <td class="code">${esc(r.p.code)}${added.has(r.p.id) ? ' <span class="tag info costcol">mới thêm</span>' : ''}</td>
     <td>${esc(r.name)}</td>
     <td class="n"><span class="sellcol">${fmtQ(r.p.qty)}</span><input class="qty costcol" data-q="${r.i}" value="${fmtQ(r.p.qty)}"></td>
-    ${loadStock() ? `<td class="n costcol">${stockCell(r)}</td>` : ''}
+    ${loadStock() ? `<td class="n">${stockCell(r)}</td>` : ''}
     <td class="n costcol">${r.cost == null || r.from === 'manual' ? `<input class="cost" data-i="${r.i}" placeholder="gõ giá…" value="${r.p.manual != null ? fmt(r.p.manual) : ''}">` : fmt(r.cost)}</td>
     <td class="n costcol"><b>${fmt(r.amount)}</b></td>
     <td class="n ${sc}">${fmt(ps(r))}</td><td class="n ${sc}"><b>${ps(r) == null ? '—' : fmt(ps(r) * r.p.qty)}</b></td>
     <td class="costcol" style="white-space:nowrap">${r.sold ? '' : `<span class="tag sold" title="Mã này không có trong bảng hàng đang bán: cần tìm mã thay thế">Chưa mở bán</span> <button class="btn sm" data-alt="${r.i}" title="Tìm mã thay thế trong hàng đang bán">🔍 Mã thay thế</button>`}</td>
     <td class="costcol"><button class="btn sm bad" data-del="${r.i}" title="Bớt món này">✕</button></td></tr>`).join('')}</tbody>
-  <tfoot><tr><td></td><td colspan="2"><span class="costcol">TỔNG GIÁ VỐN BỘ</span><span class="sellcol">TỔNG CẢ BỘ</span></td><td class="n">${fmtQ(k.parts.reduce((a, p) => a + p.qty, 0))}</td>${loadStock() ? '<td class="costcol"></td>' : ''}<td class="costcol"></td><td class="n costcol">${fmt(c.total)}</td><td class="${sc}"></td><td class="n sellcol">${sellTotal == null ? '' : fmt(sellTotal)}</td><td class="costcol"></td><td class="costcol"></td></tr></tfoot>`;
+  <tfoot><tr><td></td><td colspan="2"><span class="costcol">TỔNG GIÁ VỐN BỘ</span><span class="sellcol">TỔNG CẢ BỘ</span></td><td class="n">${fmtQ(k.parts.reduce((a, p) => a + p.qty, 0))}</td>${loadStock() ? '<td></td>' : ''}<td class="costcol"></td><td class="n costcol">${fmt(c.total)}</td><td class="${sc}"></td><td class="n sellcol">${sellTotal == null ? '' : fmt(sellTotal)}</td><td class="costcol"></td><td class="costcol"></td></tr></tfoot>`;
   $$('#kdTable input.cost').forEach(inp => inp.onchange = async () => {
     k.parts[+inp.dataset.i].manual = parseNum(inp.value); await saveKit(s); renderKitDetail();
   });
@@ -1352,11 +1352,28 @@ async function openSettings() {
       <button class="btn" data-switch>🔁 Đổi tài khoản</button>
     </div>
     <p class="small muted" style="margin:12px 0 0">Bấm nút sẽ mở một cửa sổ Edge <b>riêng</b> (không đụng tới Chrome đang dùng). Đăng nhập xong thì <b>đóng cửa sổ đó</b>, từ sau bấm 📦 Lấy tồn kho là app tự lấy. <i>Đổi tài khoản</i> sẽ đăng xuất tài khoản cũ trong cửa sổ riêng đó rồi mở trang đăng nhập.</p>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0 12px">
+    <div style="font-weight:700;margin-bottom:8px">🔒 Mật khẩu hiện giá vốn</div>
+    <div data-pwbox></div>
     <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0 10px">
     <div class="small muted">Phiên bản app: v${APP_VERSION}</div>`;
   await modal({
     title: '⚙️ Cài đặt', body, buttons: [{ text: 'Xong', cls: 'pri', value: true }],
     onOpen: async mb => {
+      const box = $('[data-pwbox]', mb);
+      const drawPw = () => {
+        if (LS.get('cust', false) && costPws().length) {
+          box.innerHTML = `<p class="small muted" style="margin:0 0 8px">Đang ẩn giá vốn. Muốn xem hoặc sửa mật khẩu thì mở khóa trước.</p><button class="btn" data-unlock>🔓 Mở khóa</button>`;
+          $('[data-unlock]', box).onclick = async () => { if (await askCostPw()) { LS.set('cust', false); applyCust(); S.kitView ? renderKitDetail() : renderKits(); drawPw(); } };
+          return;
+        }
+        box.innerHTML = `<label class="fld"><span>Mỗi dòng một mật khẩu (để trống là không cần mật khẩu)</span><textarea data-pw rows="3" style="font:inherit;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;resize:vertical" placeholder="ví dụ: 1234">${esc(costPws().join('\n'))}</textarea></label>
+          <label class="fld" style="margin-top:8px"><span>Gợi ý khi quên (không bắt buộc)</span><input type="text" data-pwhint value="${esc(LS.get('costPwHint', ''))}" placeholder="ví dụ: năm mở cửa hàng"></label>
+          <p class="small muted" style="margin:8px 0 0">Khi đã đặt mật khẩu, bấm <b>👁 Hiện giá vốn</b> sẽ phải nhập một trong các mật khẩu này. Quên mật khẩu: bấm <i>Quên mật khẩu?</i> ở ô nhập, xem gợi ý hoặc chọn thư mục app để xóa mật khẩu.</p>`;
+        $('[data-pw]', box).onchange = e => { const l = [...new Set(e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean))]; LS.set('costPw', l); toast(l.length ? `Đã lưu ${l.length} mật khẩu` : 'Đã bỏ mật khẩu', 'ok', 2500); };
+        $('[data-pwhint]', box).onchange = e => LS.set('costPwHint', e.target.value.trim());
+      };
+      drawPw();
       const inp = $('[data-shop]', mb), st = $('[data-st]', mb);
       const save = () => { const v = cleanShop(inp.value); if (v) { LS.set('kvShop', v); inp.value = v; } else inp.value = kvShop(); };
       inp.onchange = save;
@@ -1486,6 +1503,43 @@ async function printKitQuote() {
   if (im && !im.complete) { im.onload = im.onerror = go; } else go();
 }
 window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
+/* ===== Mật khẩu hiện giá vốn (đặt ở Cài đặt, có thể nhiều mật khẩu) ===== */
+const costPws = () => (LS.get('costPw', []) || []).filter(Boolean);
+async function askCostPw() {
+  const pws = costPws(); if (!pws.length) return true;
+  for (;;) {
+    const v = await modal({ title: '🔒 Nhập mật khẩu', body: `<label class="fld"><span>Mật khẩu để hiện giá vốn</span><input type="password" autofocus autocomplete="off"></label><div data-err class="small" style="color:var(--bad);margin-top:6px"></div>`,
+      buttons: [{ text: 'Quên mật khẩu?', value: 'forgot' }, { text: 'Hủy', value: null }, { text: 'Mở', cls: 'pri', value: mb => ({ pw: $('input', mb).value }) }] });
+    if (v == null) return false;
+    if (v === 'forgot') { if (await forgotCostPw()) return true; continue; }
+    if (pws.includes(v.pw.trim())) return true;
+    toast('Sai mật khẩu', 'bad', 2500);
+  }
+}
+/** Quên mật khẩu: xem gợi ý, hoặc chọn thư mục app (chứng tỏ là người quản lý máy) để xóa hết mật khẩu */
+async function forgotCostPw() {
+  const hint = LS.get('costPwHint', '');
+  const go = await modal({ title: '🔑 Quên mật khẩu', body: `${hint ? `<p style="margin-top:0">Gợi ý: <b>${esc(hint)}</b></p>` : ''}
+    <p${hint ? '' : ' style="margin-top:0"'}>Vẫn không nhớ: bấm <b>Xóa mật khẩu</b> rồi chọn <b>thư mục app</b> (thư mục chứa <code>index.html</code>) để xác nhận anh là người quản lý máy. App sẽ xóa hết mật khẩu và hiện giá vốn, anh vào <b>⚙️ Cài đặt</b> đặt lại.</p>`,
+    buttons: [{ text: 'Quay lại', value: false }, { text: 'Xóa mật khẩu', cls: 'pri', value: true }] });
+  if (!go) return false;
+  if (typeof window.showDirectoryPicker !== 'function') { toast('Trình duyệt này không hỗ trợ, hãy dùng Chrome hoặc Edge.', 'bad', 5000); return false; }
+  let dir;
+  try { dir = await window.showDirectoryPicker({ id: 'gkm-app', mode: 'read' }); } catch { return false; }
+  try {
+    const txt = await (await (await dir.getFileHandle('app.js')).getFile()).text();
+    await dir.getFileHandle('index.html');
+    if (!txt.includes('APP_VERSION')) throw 0;
+  } catch { toast('Đây không phải thư mục app GKM.', 'bad', 4000); return false; }
+  LS.set('costPw', []);
+  toast('Đã xóa hết mật khẩu. Vào ⚙️ Cài đặt để đặt lại.', 'ok', 5000);
+  return true;
+}
+async function toggleCust() {
+  const on = !!LS.get('cust', false);
+  if (on && !await askCostPw()) return;
+  LS.set('cust', !on); applyCust(); S.kitView ? renderKitDetail() : renderKits();
+}
 function applyCust() {
   const on = !!LS.get('cust', false);
   document.body.classList.toggle('cust', on);
@@ -1624,7 +1678,7 @@ async function init() {
   let kt; $('#kitSearch').oninput = () => { clearTimeout(kt); kt = setTimeout(renderKits, 120); };
   $('#kitBack').onclick = closeKit;
   $('#kdPrint').onclick = printKitQuote;
-  $$('[data-cust]').forEach(b => b.onclick = () => { LS.set('cust', !LS.get('cust', false)); applyCust(); S.kitView ? renderKitDetail() : renderKits(); });
+  $$('[data-cust]').forEach(b => b.onclick = toggleCust);
   applyCust();
   renderAddRow($('#kdAdd'), kitLookup, async (code, qty) => {
     const ck = curKit(); if (!ck) return;
