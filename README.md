@@ -22,5 +22,8 @@ App chạy offline hoàn toàn trên trình duyệt (Chrome / Edge / Cốc Cốc
    - Ô *Thêm sản phẩm*: gõ vài chữ của mã hoặc tên là ra gợi ý, dùng ↑ ↓ Enter để chọn.
 4. **Tính giá bán theo công thức** (+ − × ÷ +%) nằm dưới hóa đơn và dưới mỗi bộ nhựa.
 
+## Làm mới
+Nút **🧹 Làm mới** góc trên: đưa mọi bộ nhựa đã sửa (mã thay thế, thêm / bớt món, số lượng) về bản gốc trong file, quên các mã thay thế đã nhớ, và xóa hóa đơn đang làm. Bảng giá vốn, các phiên bộ nhựa, ảnh xe và giá vốn tự điền tay được giữ nguyên.
+
 ## Cập nhật bản mới
 Bấm nút **🔄 Cập nhật** góc trên bên phải (cần có mạng). Nếu có bản mới, app hiện nội dung thay đổi và nút **Tải bản mới**. Giải nén file zip, rồi chép đè tất cả file vào **đúng thư mục app đang dùng**, sau đó mở lại `index.html`. Dữ liệu vẫn còn nguyên.

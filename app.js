@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1287,6 +1287,34 @@ function applyCust() {
   document.body.classList.toggle('cust', on);
   $$('[data-cust]').forEach(b => { b.classList.toggle('on', on); b.textContent = on ? '👁 Hiện giá vốn' : '🙈 Ẩn giá vốn'; b.title = on ? 'Đang ở chế độ cho khách xem: giá vốn bị ẩn' : 'Ẩn giá vốn để đưa màn hình cho khách xem (chỉ hiện giá bán)'; });
 }
+/** Làm mới: đưa mọi bộ nhựa về bản gốc (bỏ mã thay thế, thêm/bớt/SL), quên mã thay thế đã nhớ, xóa hóa đơn đang làm.
+ *  Giữ nguyên bảng giá vốn, các phiên bộ nhựa gốc, ảnh xe và giá vốn tự điền tay. */
+async function resetWork() {
+  let nKit = 0;
+  const dirty = [];
+  S.kits.forEach(ss => { let ch = false; ss.kits.forEach(k => { if (k.origFull && diffLines(k.orig, k.parts).any) { nKit++; ch = true; } }); if (ch) dirty.push(ss); });
+  const nAlt = Object.keys(altMap()).length, hasInv = !!S.invoice;
+  if (!nKit && !nAlt && !hasInv) return toast('Không có gì cần làm mới: bộ nhựa đang là bản gốc và chưa có hóa đơn.', 'ok', 3500);
+  const li = [];
+  if (nKit) li.push(`<li>Đưa <b>${nKit} bộ nhựa</b> đã sửa (mã thay thế, thêm / bớt món, số lượng) về bản gốc trong file</li>`);
+  if (nAlt) li.push(`<li>Quên <b>${nAlt} mã thay thế</b> đã nhớ (lần nhập sau không tự thay nữa)</li>`);
+  if (hasInv) li.push(`<li>Xóa hóa đơn đang làm</li>`);
+  const ok = await modal({ title: '🧹 Làm mới', body: `<p style="margin-top:0">App sẽ:</p><ul>${li.join('')}</ul>
+    <p class="small muted" style="margin-bottom:0">Giữ nguyên: bảng giá vốn, các phiên bộ nhựa, ảnh xe, giá vốn anh tự điền tay.</p>`,
+    buttons: [{ text: 'Hủy', value: false }, { text: 'Làm mới', value: true, cls: 'pri' }] });
+  if (!ok) return;
+  S.kits.forEach(ss => ss.kits.forEach(k => {
+    if (!k.origFull || !diffLines(k.orig, k.parts).any) return;
+    const manual = new Map(k.parts.map(p => [p.id, p.manual]));
+    k.parts = k.origFull.map(p => ({ ...p, manual: manual.get(p.id) ?? p.manual }));
+  }));
+  for (const ss of dirty) await saveKit(ss);
+  LS.set('altMap', {});
+  S.invoice = null; try { sessionStorage.removeItem('gkm.invoice'); } catch { }
+  renderInvoice();
+  if (S.kitView) renderKitDetail(); else renderKits();
+  toast('Đã làm mới. Bộ nhựa về bản gốc, hóa đơn đã xóa.', 'ok', 4000);
+}
 function closeKit() { S.kitView = null; $('#kitDetail').classList.add('hide'); $('#kitList').classList.remove('hide'); renderKits(); }
 async function addKitImages(files) {
   const ck = curKit(); if (!ck) return;
@@ -1376,6 +1404,7 @@ async function init() {
 
   // bộ nhựa
   $('#updBtn').onclick = checkUpdate;
+  $('#resetBtn').onclick = resetWork;
   $('#updBtn').title = `Đang dùng v${APP_VERSION}. Bấm để kiểm tra bản mới.`;
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };
   S.kitLine = LS.get('kitLine', '');
