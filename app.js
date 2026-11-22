@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.7';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1068,7 +1068,7 @@ function computeKit(kit) {
     const sold = sx ? !!lookup(sx, p.code) : true;
     if (!sold) notSold++;
     const stock = stockOf(p.code);
-    if (stock != null && stock < p.qty) short++;
+    if (loadStock() && (!sold || stock == null || stock < p.qty)) short++;
     const amount = cost != null ? cost * p.qty : null;
     if (amount != null) total += amount;
     return { stock,  i, p, cost, amount, from, sold, name: p.name || (it && it.name) || '' };
@@ -1455,10 +1455,10 @@ async function loadStockFile(file) {
 }
 function renderStockBtn() {
   const st = loadStock(), b = $('#stockBtn'); if (!b) return;
-  b.textContent = st ? `📦 Tồn kho (${fmtTime(st.at)})` : '📦 Lấy tồn kho';
-  b.title = st ? `Tồn kho theo file ${st.fileName}. Bấm để lấy lại từ file mới nhất trong thư mục Tải về.` : 'Lấy tồn kho từ file Danh sách hàng hóa xuất từ KiotViet';
+  b.innerHTML = st ? `🔄 Cập nhật tồn kho mới nhất <span style="font-weight:400;opacity:.75">(đang là lúc ${fmtTime(st.at)})</span>` : '📦 Lấy tồn kho';
+  b.title = st ? `Tồn kho đang dùng lấy lúc ${fmtTime(st.at)}. Bấm để lấy lại tồn kho mới nhất từ KiotViet.` : 'Lấy tồn kho mới nhất từ KiotViet';
 }
-const stockCell = r => r.stock == null ? (loadStock() ? '<span class="muted">—</span>' : '') : r.stock <= 0 ? '<span class="tag out">Hết</span>' : r.stock < r.p.qty ? `<span class="tag out">${fmtQ(r.stock)}</span>` : fmtQ(r.stock);
+const stockCell = r => !loadStock() ? '' : !r.sold ? `<span class="tag out" title="Mã này chưa mở bán">${r.stock > 0 ? fmtQ(r.stock) + ' · ' : ''}Chưa bán</span>` : r.stock == null ? '<span class="tag out" title="Không thấy mã này trong KiotViet">Không có</span>' : r.stock <= 0 ? '<span class="tag out">Hết</span>' : r.stock < r.p.qty ? `<span class="tag out">${fmtQ(r.stock)}</span>` : fmtQ(r.stock);
 function kitLookup(code) {
   const src = kitPriceSource();
   return (src && src !== 'file' ? lookup(priceIndex(src), code) : null) || (kitSaleSource() ? lookup(priceIndex(kitSaleSource()), code) : null);
@@ -1610,6 +1610,10 @@ async function init() {
   $('#updBtn').onclick = checkUpdate;
   $('#resetBtn').onclick = resetWork;
   $('#setBtn').onclick = openSettings;
+  const toTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  $('.brand').onclick = toTop; $('#topBtn').onclick = toTop;
+  const onScroll = () => $('#topBtn').classList.toggle('show', window.scrollY > 400);
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
   $('#stockBtn').onclick = fetchStock; renderStockBtn();
   $('#updBtn').title = `Đang dùng v${APP_VERSION}. Bấm để kiểm tra bản mới.`;
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };

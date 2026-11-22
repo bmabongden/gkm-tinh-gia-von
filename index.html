@@ -19,7 +19,10 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-u
 button,input,select,textarea{font:inherit;color:inherit}
 header{background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff;position:sticky;top:0;z-index:20;box-shadow:0 2px 10px rgba(0,0,0,.15)}
 .hwrap{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 16px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;white-space:nowrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;white-space:nowrap;cursor:pointer}
+#topBtn{position:fixed;right:18px;bottom:18px;z-index:30;border:0;border-radius:999px;padding:10px 16px;background:var(--pri);color:#fff;font-weight:700;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;opacity:0;pointer-events:none;transform:translateY(10px);transition:.2s}
+#topBtn.show{opacity:1;pointer-events:auto;transform:none}
+@media print{#topBtn{display:none}}
 .brand img{width:32px;height:32px;border-radius:8px;background:#fff}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;border:0;color:#dbeafe;padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:600}
@@ -162,7 +165,7 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
 <body>
 <header>
   <div class="hwrap">
-    <div class="brand"><img src="icon.svg" alt="">GKM Tính giá vốn</div>
+    <div class="brand" title="Lên đầu trang"><img src="icon.svg" alt="">GKM Tính giá vốn</div>
     <nav id="nav">
       <button data-tab="invoice" class="on">🧾 Hóa đơn</button>
       <button data-tab="kits">🏍️ Bộ nhựa</button>
@@ -174,6 +177,7 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
   </div>
 </header>
 
+<button id="topBtn" title="Lên đầu trang">⬆ Lên đầu</button>
 <main>
 <!-- ================= HÓA ĐƠN ================= -->
 <section class="tab on" id="tab-invoice">
