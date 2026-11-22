@@ -17,6 +17,7 @@ App chạy offline hoàn toàn trên trình duyệt (Chrome / Edge / Cốc Cốc
    - Nút **🙈 Ẩn giá vốn**: chế độ cho khách xem, chỉ hiện giá bán.
    - Thanh **dòng xe** (SH Mode, Vision, Lead, Wave Alpha…) phía trên danh sách: bấm để lọc nhanh theo dòng xe.
    - Nút **🔍 Mã thay thế** cạnh nhãn *Chưa mở bán*: gợi ý các mã đang bán có phần đầu giống nhất, bấm *Chọn* để thay. Nếu mã cũ còn ở bộ nhựa khác (kể cả phiên khác), app hỏi *Thay tất cả* hay *Chỉ món này*. Chọn *Thay tất cả* thì app nhớ lại và tự thay cả khi nhập file bộ nhựa mới sau này.
+   - Nút **📦 Lấy tồn kho**: vào KiotViet → *Hàng hóa* → *Xuất file*, rồi bấm nút này. App tự tìm file `DanhSachSanPham…` mới nhất trong thư mục Tải về (lần đầu chọn thư mục Tải về một lần) và hiện cột *Tồn* cho từng món. Món hết hoặc không đủ số lượng được tô đỏ, thẻ bộ nhựa ghi *N món thiếu hàng* hoặc *đủ hàng*.
    - Nút **🖨️ In báo giá**: in hoặc *Lưu dưới dạng PDF* báo giá cho khách (ảnh xe, danh sách món, giá bán, không có giá vốn). Cần đặt công thức giá bán trước.
    - Hóa đơn: món bán thấp hơn giá vốn tô cam, có nhãn *Bán lỗ* và bộ lọc *Chỉ món lỗ*.
    - Ô *Thêm sản phẩm*: gõ vài chữ của mã hoặc tên là ra gợi ý, dùng ↑ ↓ Enter để chọn.

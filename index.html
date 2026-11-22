@@ -121,6 +121,7 @@ body:not(.cust) .sellcol{display:none!important}
 .addrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px dashed #cbd5e1;border-radius:10px;background:#fafcff}
 input.qty{width:64px;text-align:right;padding:4px 6px}
 .tag.sold{background:#ede9fe;color:#6d28d9}
+.tag.out{background:#fee2e2;color:#b91c1c}
 .stat .sub{font-size:12px;color:var(--muted);margin-top:2px}
 .stat.big .sub{color:#dbeafe}
 .suggest{position:absolute;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.15);min-width:360px;max-width:560px;max-height:300px;overflow:auto}
@@ -234,7 +235,7 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
     <div class="card">
       <div class="row" style="justify-content:space-between">
         <h2 style="margin:0">Giá vốn bộ nhựa</h2>
-        <div class="row"><button class="btn custbtn" data-cust></button><button class="btn pri costcol" id="kitImport">➕ Nhập bảng bộ nhựa</button></div>
+        <div class="row"><button class="btn custbtn" data-cust></button><button class="btn costcol" id="stockBtn">📦 Lấy tồn kho</button><button class="btn pri costcol" id="kitImport">➕ Nhập bảng bộ nhựa</button></div>
       </div>
       <div class="row" style="margin-top:12px">
         <input type="search" id="kitSearch" placeholder="🔍 Tìm tên xe / bộ nhựa / mã…" class="grow" style="max-width:360px">

@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1059,7 +1059,7 @@ function computeKit(kit) {
   const src = kitPriceSource();
   const ix = src && src !== 'file' ? priceIndex(src) : null;
   const sx = kitSaleSource() ? priceIndex(kitSaleSource()) : null;
-  let total = 0, miss = 0, notSold = 0;
+  let total = 0, miss = 0, notSold = 0, short = 0;
   const rows = kit.parts.map((p, i) => {
     let cost = p.cost, from = 'file', it = null;
     if (ix) { it = lookup(ix, p.code); cost = it && it.cost != null ? it.cost : null; from = 'table'; }
@@ -1067,11 +1067,13 @@ function computeKit(kit) {
     if (cost == null) miss++;
     const sold = sx ? !!lookup(sx, p.code) : true;
     if (!sold) notSold++;
+    const stock = stockOf(p.code);
+    if (stock != null && stock < p.qty) short++;
     const amount = cost != null ? cost * p.qty : null;
     if (amount != null) total += amount;
-    return { i, p, cost, amount, from, sold, name: p.name || (it && it.name) || '' };
+    return { stock,  i, p, cost, amount, from, sold, name: p.name || (it && it.name) || '' };
   });
-  return { rows, total, miss, notSold };
+  return { rows, total, miss, notSold, short };
 }
 /* Dòng xe: nhận từ tên bộ nhựa (chịu được lỗi gõ trong file như "Ari Blade", "Balde", "Visonn", "Wale Alpha") */
 const LINES = [
@@ -1151,7 +1153,7 @@ function renderKits() {
     return hdr + `<div class="kit" data-s="${s.id}" data-k="${k.id}">
       <div class="img">${img ? `<img loading="lazy" decoding="async" src="${blobUrl(img)}" alt="">` : '🏍️'}</div>
       <div class="b"><div class="nm">${esc(k.name)}</div>
-      <div class="small muted">${k.parts.length} món${edited ? ' · <span style="color:var(--warn)">đã chỉnh sửa</span>' : ''}<span class="costcol">${c.miss ? ` · <span style="color:var(--bad)">${c.miss} thiếu giá</span>` : ''}${c.notSold ? ` · <span style="color:#7c3aed">${c.notSold} chưa mở bán</span>` : ''}</span></div>
+      <div class="small muted">${k.parts.length} món${edited ? ' · <span style="color:var(--warn)">đã chỉnh sửa</span>' : ''}<span class="costcol">${c.miss ? ` · <span style="color:var(--bad)">${c.miss} thiếu giá</span>` : ''}${c.notSold ? ` · <span style="color:#7c3aed">${c.notSold} chưa mở bán</span>` : ''}${loadStock() ? (c.short ? ` · <span style="color:#b91c1c;font-weight:600">${c.short} món thiếu hàng</span>` : ' · <span style="color:#15803d">đủ hàng</span>') : ''}</span></div>
       <div class="tt costcol">${fmt(c.total)}</div><div class="tt sellcol">${(() => { const v = sellPrice(c.total, sellCfg('kit')); return v == null ? '' : fmt(v); })()}</div></div></div>`;
   }).join('');
   $$('.kit', grid).forEach(el => el.onclick = () => openKit(el.dataset.s, el.dataset.k));
@@ -1188,7 +1190,7 @@ function renderKitDetail() {
   const { s, k } = ck;
   const c = computeKit(k);
   const src = $('#kitPriceSel').selectedOptions[0], sale = $('#kitSaleSel').selectedOptions[0];
-  $('#kdSess').textContent = `Phiên: ${s.name} · Giá vốn: ${src ? src.text : ''}${kitSaleSource() ? ' · Đối chiếu hàng đang bán: ' + sale.text : ''}`;
+  $('#kdSess').textContent = `Phiên: ${s.name} · Giá vốn: ${src ? src.text : ''}${kitSaleSource() ? ' · Đối chiếu hàng đang bán: ' + sale.text : ''}${loadStock() ? ` · Tồn kho lúc ${fmtTime(loadStock().at)}${c.short ? ` (${c.short} món thiếu hàng)` : ' (đủ hàng)'}` : ''}`;
   $('#kdName').textContent = k.name;
   $('#kdLine').textContent = '🏍️ ' + (k.line || kitLine(k.name));
   $('#kdCount').textContent = k.parts.length;
@@ -1210,18 +1212,19 @@ function renderKitDetail() {
   $('#kdSellTotal').textContent = sellTotal == null ? 'Chưa đặt' : fmt(sellTotal);
   const sc = perPart ? 'sellcol' : 'hide';
   const added = new Set(diffLines(k.orig, k.parts).added.map(x => x.id));
-  $('#kdTable').innerHTML = `<thead><tr><th class="n">#</th><th>Mã hàng</th><th>Tên chi tiết</th><th class="n">SL</th><th class="n costcol">Giá vốn</th><th class="n costcol">Thành tiền</th><th class="n ${sc}">Đơn giá</th><th class="n ${sc}">Thành tiền</th><th class="costcol"></th><th class="costcol"></th></tr></thead>
+  $('#kdTable').innerHTML = `<thead><tr><th class="n">#</th><th>Mã hàng</th><th>Tên chi tiết</th><th class="n">SL</th>${loadStock() ? '<th class="n costcol" title="Tồn kho KiotViet">Tồn</th>' : ''}<th class="n costcol">Giá vốn</th><th class="n costcol">Thành tiền</th><th class="n ${sc}">Đơn giá</th><th class="n ${sc}">Thành tiền</th><th class="costcol"></th><th class="costcol"></th></tr></thead>
   <tbody>${c.rows.map(r => `<tr class="${r.cost == null ? 'miss' : r.from === 'manual' ? 'manual' : ''}">
     <td class="n muted">${r.i + 1}</td>
     <td class="code">${esc(r.p.code)}${added.has(r.p.id) ? ' <span class="tag info costcol">mới thêm</span>' : ''}</td>
     <td>${esc(r.name)}</td>
     <td class="n"><span class="sellcol">${fmtQ(r.p.qty)}</span><input class="qty costcol" data-q="${r.i}" value="${fmtQ(r.p.qty)}"></td>
+    ${loadStock() ? `<td class="n costcol">${stockCell(r)}</td>` : ''}
     <td class="n costcol">${r.cost == null || r.from === 'manual' ? `<input class="cost" data-i="${r.i}" placeholder="gõ giá…" value="${r.p.manual != null ? fmt(r.p.manual) : ''}">` : fmt(r.cost)}</td>
     <td class="n costcol"><b>${fmt(r.amount)}</b></td>
     <td class="n ${sc}">${fmt(ps(r))}</td><td class="n ${sc}"><b>${ps(r) == null ? '—' : fmt(ps(r) * r.p.qty)}</b></td>
     <td class="costcol" style="white-space:nowrap">${r.sold ? '' : `<span class="tag sold" title="Mã này không có trong bảng hàng đang bán: cần tìm mã thay thế">Chưa mở bán</span> <button class="btn sm" data-alt="${r.i}" title="Tìm mã thay thế trong hàng đang bán">🔍 Mã thay thế</button>`}</td>
     <td class="costcol"><button class="btn sm bad" data-del="${r.i}" title="Bớt món này">✕</button></td></tr>`).join('')}</tbody>
-  <tfoot><tr><td></td><td colspan="2"><span class="costcol">TỔNG GIÁ VỐN BỘ</span><span class="sellcol">TỔNG CẢ BỘ</span></td><td class="n">${fmtQ(k.parts.reduce((a, p) => a + p.qty, 0))}</td><td class="costcol"></td><td class="n costcol">${fmt(c.total)}</td><td class="${sc}"></td><td class="n sellcol">${sellTotal == null ? '' : fmt(sellTotal)}</td><td class="costcol"></td><td class="costcol"></td></tr></tfoot>`;
+  <tfoot><tr><td></td><td colspan="2"><span class="costcol">TỔNG GIÁ VỐN BỘ</span><span class="sellcol">TỔNG CẢ BỘ</span></td><td class="n">${fmtQ(k.parts.reduce((a, p) => a + p.qty, 0))}</td>${loadStock() ? '<td class="costcol"></td>' : ''}<td class="costcol"></td><td class="n costcol">${fmt(c.total)}</td><td class="${sc}"></td><td class="n sellcol">${sellTotal == null ? '' : fmt(sellTotal)}</td><td class="costcol"></td><td class="costcol"></td></tr></tfoot>`;
   $$('#kdTable input.cost').forEach(inp => inp.onchange = async () => {
     k.parts[+inp.dataset.i].manual = parseNum(inp.value); await saveKit(s); renderKitDetail();
   });
@@ -1308,6 +1311,73 @@ function applyAltMap(kits) {
   kits.forEach(k => k.parts.forEach(p => { const r = m[looseCode(p.code)]; if (r && looseCode(r.code) !== looseCode(p.code)) { replacePart(p, r); n++; } }));
   return n;
 }
+/* ===== Tồn kho: lấy từ file Danh sách hàng hóa xuất từ KiotViet (cột Mã hàng + Tồn kho) ===== */
+let STOCK = null;
+function loadStock() { if (STOCK === null) STOCK = LS.get('stock', null) || false; return STOCK || null; }
+function stockOf(code) { const st = loadStock(); if (!st) return null; const v = st.map[looseCode(code)]; return v == null ? null : v; }
+const metaDB = () => new Promise((res, rej) => { const r = indexedDB.open('gkm-meta', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+async function metaGet(k) { try { const db = await metaDB(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); } catch { return null; } }
+async function metaSet(k, v) { try { const db = await metaDB(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch { } }
+const fmtTime = t => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+/** Tìm file DanhSachSanPham mới nhất trong thư mục Tải về đã chọn */
+async function newestStockFile(dir) {
+  let best = null;
+  for await (const [name, h] of dir.entries()) {
+    if (h.kind !== 'file' || !/^danh ?sach ?san ?pham.*\.(xlsx|xls|csv)$/i.test(strip(name).replace(/[^a-z0-9. _-]/g, ''))) continue;
+    const f = await h.getFile();
+    if (!best || f.lastModified > best.lastModified) best = f;
+  }
+  return best;
+}
+async function fetchStock() {
+  let file = null;
+  if (typeof window.showDirectoryPicker === 'function') {
+    let dir = await metaGet('dlDir');
+    if (dir) { try { if ((await dir.requestPermission({ mode: 'read' })) !== 'granted') dir = null; } catch { dir = null; } }
+    if (!dir) {
+      const ok = await modal({ title: '📦 Lấy tồn kho', body: `<p style="margin-top:0">Lần đầu, anh chọn thư mục <b>Tải về (Downloads)</b>, nơi máy lưu file xuất từ KiotViet. Lần sau app tự tìm file mới nhất ở đó.</p>`,
+        buttons: [{ text: 'Hủy', value: false }, { text: 'Chọn thư mục', value: true, cls: 'pri' }] });
+      if (!ok) return;
+      try { dir = await window.showDirectoryPicker({ id: 'gkm-downloads', startIn: 'downloads', mode: 'read' }); await metaSet('dlDir', dir); }
+      catch (e) { if (e.name !== 'AbortError') toast('Không mở được thư mục: ' + e.message, 'bad'); return; }
+    }
+    file = await newestStockFile(dir);
+    if (!file) { toast('Chưa thấy file DanhSachSanPham trong thư mục ' + dir.name + '. Vào KiotViet → Hàng hóa → Xuất file trước.', 'bad', 6000); return; }
+    const ageMin = (Date.now() - file.lastModified) / 60000;
+    if (ageMin > 30 && !await confirmBox(`File mới nhất là <b>${esc(file.name)}</b>, xuất lúc <b>${fmtTime(file.lastModified)}</b> (${ageMin > 1440 ? Math.round(ageMin / 1440) + ' ngày' : ageMin > 90 ? Math.round(ageMin / 60) + ' giờ' : Math.round(ageMin) + ' phút'} trước), có thể đã cũ.<br><br>Muốn tồn kho mới nhất: vào KiotViet → <b>Hàng hóa</b> → <b>Xuất file</b>, rồi bấm lại nút này.`, 'Vẫn dùng file này', false)) return;
+  } else {
+    file = await pickFile(); if (!file) return;
+  }
+  await loadStockFile(file);
+}
+async function loadStockFile(file) {
+  let r;
+  try { r = await readWorkbook(file); } catch (e) { return toast('Không đọc được file: ' + e.message, 'bad'); }
+  for (const sh of r.sheets) {
+    for (let h = 0; h < Math.min(10, sh.raw.length); h++) {
+      const row = sh.raw[h].map(x => strip(x));
+      const ci = row.indexOf('ma hang'), ti = row.findIndex(x => x === 'ton kho' || x === 'ton');
+      if (ci < 0 || ti < 0) continue;
+      const map = {}; let n = 0;
+      for (let i = h + 1; i < sh.raw.length; i++) {
+        const code = looseCode(sh.raw[i][ci]); if (!code) continue;
+        const v = parseNum(sh.raw[i][ti]); map[code] = v == null ? 0 : v; n++;
+      }
+      STOCK = { at: file.lastModified || Date.now(), fileName: file.name, n, map };
+      try { LS.set('stock', STOCK); } catch (e) { toast('Không lưu được tồn kho: ' + e.message, 'bad'); }
+      renderStockBtn();
+      if (S.kitView) renderKitDetail(); else renderKits();
+      return toast(`Đã lấy tồn kho ${n.toLocaleString('vi-VN')} mã (file xuất lúc ${fmtTime(STOCK.at)})`, 'ok', 4500);
+    }
+  }
+  toast('File này không có cột “Mã hàng” và “Tồn kho”. Hãy dùng file Danh sách hàng hóa xuất từ KiotViet.', 'bad', 6000);
+}
+function renderStockBtn() {
+  const st = loadStock(), b = $('#stockBtn'); if (!b) return;
+  b.textContent = st ? `📦 Tồn kho (${fmtTime(st.at)})` : '📦 Lấy tồn kho';
+  b.title = st ? `Tồn kho theo file ${st.fileName}. Bấm để lấy lại từ file mới nhất trong thư mục Tải về.` : 'Lấy tồn kho từ file Danh sách hàng hóa xuất từ KiotViet';
+}
+const stockCell = r => r.stock == null ? (loadStock() ? '<span class="muted">—</span>' : '') : r.stock <= 0 ? '<span class="tag out">Hết</span>' : r.stock < r.p.qty ? `<span class="tag out">${fmtQ(r.stock)}</span>` : fmtQ(r.stock);
 function kitLookup(code) {
   const src = kitPriceSource();
   return (src && src !== 'file' ? lookup(priceIndex(src), code) : null) || (kitSaleSource() ? lookup(priceIndex(kitSaleSource()), code) : null);
@@ -1458,6 +1528,7 @@ async function init() {
   // bộ nhựa
   $('#updBtn').onclick = checkUpdate;
   $('#resetBtn').onclick = resetWork;
+  $('#stockBtn').onclick = fetchStock; renderStockBtn();
   $('#updBtn').title = `Đang dùng v${APP_VERSION}. Bấm để kiểm tra bản mới.`;
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };
   S.kitLine = LS.get('kitLine', '');
