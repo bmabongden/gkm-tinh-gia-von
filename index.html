@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GKM Tính giá vốn</title>
+<meta name="theme-color" content="#1565c0">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#f3f6fb; --card:#fff; --ink:#1b2430; --muted:#64748b; --line:#e2e8f0;
+  --pri:#1565c0; --pri2:#0d47a1; --pri-soft:#e3f0ff; --ok:#15803d; --ok-soft:#e7f7ec;
+  --bad:#c62828; --bad-soft:#fdecec; --warn:#b45309; --warn-soft:#fff5e0;
+  --r:12px; --sh:0 1px 2px rgba(15,23,42,.06),0 4px 14px rgba(15,23,42,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff;position:sticky;top:0;z-index:20;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.hwrap{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;white-space:nowrap}
+.brand img{width:32px;height:32px;border-radius:8px;background:#fff}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:transparent;border:0;color:#dbeafe;padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:600}
+nav button:hover{background:rgba(255,255,255,.12);color:#fff}
+nav button.on{background:#fff;color:var(--pri2)}
+main{max-width:1200px;margin:0 auto;padding:16px}
+section.tab{display:none}
+section.tab.on{display:block}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:16px;margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:17px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1 1 auto}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.btn{border:1px solid var(--line);background:#fff;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:#cbd5e1;background:#f8fafc}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.pri:hover{background:var(--pri2)}
+.btn.bad{color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:default}
+input[type=text],input[type=number],input[type=search],select,textarea{border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;background:#fff;min-width:0}
+input:focus,select:focus,textarea:focus{outline:2px solid #93c5fd;border-color:var(--pri)}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:600}
+.drop{border:2px dashed #93c5fd;background:var(--pri-soft);border-radius:var(--r);padding:22px;text-align:center;color:var(--pri2);cursor:pointer;transition:.15s}
+.drop.over{background:#cfe3ff;border-color:var(--pri)}
+.drop b{font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:12px 14px}
+.stat .k{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.stat .v{font-size:22px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.stat.big{background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff}
+.stat.big .k{color:#dbeafe}
+.stat.bad .v{color:var(--bad)}
+.stat.ok .v{color:var(--ok)}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{background:#f8fafc;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;color:#475569;position:sticky;top:0;z-index:1;white-space:nowrap}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr.miss td{background:var(--bad-soft)}
+tr.manual td{background:var(--warn-soft)}
+tfoot td{font-weight:700;background:#f8fafc;position:sticky;bottom:0}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.tag.bad{background:var(--bad);color:#fff}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.warn{background:#fde7b6;color:var(--warn)}
+.tag.info{background:var(--pri-soft);color:var(--pri2)}
+.code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13.5px}
+input.cost{width:120px;text-align:right;padding:4px 8px}
+.sell{background:linear-gradient(180deg,#f0f7ff,#fff);border:1px solid #bfdbfe}
+.sell .formula{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:16px}
+.sell .res{font-size:26px;font-weight:800;color:var(--pri2);font-variant-numeric:tabular-nums}
+.ops{display:inline-flex;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden}
+.ops button{border:0;background:#fff;padding:7px 13px;cursor:pointer;font-weight:800;font-size:16px;border-right:1px solid #e2e8f0}
+.ops button:last-child{border-right:0}
+.ops button.on{background:var(--pri);color:#fff}
+.sess{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.sesscard{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:6px}
+.sesscard.def{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri-soft)}
+.sesscard .t{font-weight:700}
+.kits{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.kit{background:#fff;border-radius:12px;box-shadow:var(--sh);overflow:hidden;cursor:pointer;transition:.15s;display:flex;flex-direction:column}
+.kit:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.12)}
+.kit .img{aspect-ratio:4/3;background:#eef2f7 center/contain no-repeat;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:40px}
+.kit .img img{width:100%;height:100%;object-fit:contain;display:block}
+.kit .b{padding:10px 12px}
+.kit .nm{font-weight:700;line-height:1.3}
+.kit .tt{color:var(--pri2);font-weight:800;font-size:17px;margin-top:4px}
+.kitdetail{display:grid;grid-template-columns:minmax(240px,380px) 1fr;gap:16px}
+.kitdetail .bigimg{width:100%;aspect-ratio:4/3;background:#eef2f7 center/contain no-repeat;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:60px}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.thumbs div{width:56px;height:42px;border-radius:6px;background:#eef2f7 center/cover;cursor:pointer;border:2px solid transparent}
+.thumbs div.on{border-color:var(--pri)}
+@media (max-width:760px){.kitdetail{grid-template-columns:1fr}.stat .v{font-size:19px}.sell .res{font-size:22px}}
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:4vh 12px;overflow:auto}
+.modal{background:#fff;border-radius:14px;max-width:980px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal .mh{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.modal .mb{padding:16px 18px}
+.modal .mf{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:12px 0}
+.req{color:var(--bad)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99;display:flex;flex-direction:column;gap:8px;align-items:center}
+#toast div{background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);animation:tin .2s}
+#toast div.bad{background:var(--bad)}
+#toast div.ok{background:var(--ok)}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+.empty .ic{font-size:42px}
+.hide{display:none!important}
+.seg{display:inline-flex;gap:4px;background:#eef2f7;border-radius:10px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;color:#475569}
+.seg button.on{background:#fff;color:var(--pri2);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+body.cust .costcol{display:none!important}
+body:not(.cust) .sellcol{display:none!important}
+.btn.custbtn.on{background:#fff3e0;border-color:#f59e0b;color:#b45309}
+.notice{margin-top:12px;padding:10px 14px;border-radius:10px;background:var(--warn-soft);border:1px solid #fcd34d;color:#78350f}
+.notice ul{margin:6px 0 0;padding-left:20px}
+.addrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px dashed #cbd5e1;border-radius:10px;background:#fafcff}
+input.qty{width:64px;text-align:right;padding:4px 6px}
+.tag.sold{background:#ede9fe;color:#6d28d9}
+.stat .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.stat.big .sub{color:#dbeafe}
+.suggest{position:absolute;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.15);min-width:360px;max-width:560px;max-height:300px;overflow:auto}
+.suggest div{padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--line);font-size:14px}
+.suggest div:hover,.suggest div.on{background:var(--pri-soft)}
+tr.loss td{background:#fff1e6}
+.tag.loss{background:#ea580c;color:#fff}
+#printArea{display:none}
+@media print{
+  body.printing>*:not(#printArea){display:none!important}
+  body.printing #printArea{display:block}
+  body.printing{background:#fff}
+  @page{margin:12mm}
+}
+.pq{font-size:13px;color:#000}
+.pq-h{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1565c0;padding-bottom:8px;margin-bottom:10px}
+.pq-brand{font-size:28px;font-weight:900;color:#1565c0;line-height:1}
+.pq-sub{font-weight:700;letter-spacing:.08em;color:#334155}
+.pq h1{font-size:20px;margin:6px 0 10px}
+.pq-img{display:block;max-width:60%;max-height:260px;margin:0 auto 12px;object-fit:contain}
+.pq table{width:100%;border-collapse:collapse}
+.pq th,.pq td{border:1px solid #cbd5e1;padding:5px 7px;position:static;background:none;color:#000}
+.pq th{background:#e3f0ff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pq-total{text-align:right;font-size:18px;margin-top:12px}
+.pq-total b{color:#0d47a1;font-size:22px}
+.pq-note{margin-top:10px;font-size:12px;color:#7c2d12;border:1px dashed #f59e0b;padding:6px 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:13.5px;color:#334155}
+.chip:hover{border-color:var(--pri);color:var(--pri2)}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.linehdr{grid-column:1/-1;margin:14px 0 0;font-size:18px;color:var(--pri2);border-bottom:2px solid #bfdbfe;padding-bottom:6px}
+.linehdr:first-child{margin-top:0}
+kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div class="brand"><img src="icon.svg" alt="">GKM Tính giá vốn</div>
+    <nav id="nav">
+      <button data-tab="invoice" class="on">🧾 Hóa đơn</button>
+      <button data-tab="kits">🏍️ Bộ nhựa</button>
+      <button data-tab="prices">📦 Bảng giá vốn</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ================= HÓA ĐƠN ================= -->
+<section class="tab on" id="tab-invoice">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Tính giá vốn hóa đơn</h2>
+      <label class="row small muted" style="gap:6px">Bảng giá vốn hóa đơn:
+        <select id="invPriceSel" style="min-width:220px"></select>
+      </label>
+    </div>
+    <div id="invNoPrice" class="hide" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn)">
+      Chưa có bảng giá vốn hóa đơn (hàng đang bán). Vào tab <b>📦 Bảng giá vốn</b> để nhập bảng sản phẩm trước.
+    </div>
+    <div class="drop" id="invDrop" style="margin-top:12px">
+      <b>📂 Kéo thả file hóa đơn vào đây</b> hoặc bấm để chọn file<br>
+      <span class="small">Excel (.xlsx, .xls) hoặc CSV. Cần cột <b>Mã hàng</b> và <b>Số lượng</b>.</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="invPaste">📋 Dán từ Excel</button>
+      <button class="btn bad hide" id="invClear">🗑️ Xóa hóa đơn</button>
+      <span class="grow"></span>
+      <span class="small muted" id="invFileName"></span>
+    </div>
+  </div>
+
+  <div id="invResult" class="hide">
+    <div class="stats">
+      <div class="stat"><div class="k">Số dòng</div><div class="v" id="sLines">0</div><div class="sub" id="sQty"></div></div>
+      <div class="stat" id="sMissBox"><div class="k">Mã không tìm thấy</div><div class="v" id="sMiss">0</div></div>
+      <div class="stat big"><div class="k">Tổng giá vốn</div><div class="v" id="sTotal">0</div></div>
+      <div class="stat"><div class="k">Tổng giá bán</div><div class="v" id="sSell">0</div><div class="sub" id="sSellNote"></div></div>
+      <div class="stat"><div class="k">Chênh lệch (lãi)</div><div class="v" id="sProfit">0</div><div class="sub" id="sProfitPct"></div><div class="sub" id="sLoss" style="color:#ea580c;font-weight:700"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <div class="seg" id="invFilter">
+          <button data-f="all" class="on">Tất cả</button>
+          <button data-f="miss">Chỉ mã thiếu</button>
+          <button data-f="loss">Chỉ món lỗ</button>
+        </div>
+        <input type="search" id="invSearch" placeholder="🔍 Lọc mã / tên…" style="width:200px">
+        <span class="grow"></span>
+        <button class="btn sm" id="invCopyMiss">📋 Chép mã thiếu</button>
+        <button class="btn sm pri" id="invExport">⬇️ Xuất Excel</button>
+      </div>
+      <div class="tblwrap"><table id="invTable"></table></div>
+      <p class="small muted" style="margin:8px 0 0">Giá bán lấy từ cột giá bán của hóa đơn; nếu hóa đơn không có thì lấy theo bảng giá. Dòng <span class="tag bad">đỏ</span> là mã không có trong bảng giá: có thể gõ giá vốn tay (dòng chuyển <span class="tag warn">vàng</span>). Sửa số lượng ngay trong ô SL, bấm ✕ để bớt món.</p>
+      <div id="invAdd"></div>
+      <div id="invNotice"></div>
+      <button class="btn sm hide" id="invReset" style="margin-top:8px">↺ Khôi phục hóa đơn gốc</button>
+    </div>
+    <div class="card sell" id="invSell"></div>
+  </div>
+</section>
+
+<!-- ================= BỘ NHỰA ================= -->
+<section class="tab" id="tab-kits">
+  <div id="kitList">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Giá vốn bộ nhựa</h2>
+        <div class="row"><button class="btn custbtn" data-cust></button><button class="btn pri costcol" id="kitImport">➕ Nhập bảng bộ nhựa</button></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <input type="search" id="kitSearch" placeholder="🔍 Tìm tên xe / bộ nhựa / mã…" class="grow" style="max-width:360px">
+        <select id="kitSessSel"></select>
+        <label class="row small muted costcol" style="gap:6px">Bảng giá vốn bộ nhựa:
+          <select id="kitPriceSel"></select>
+        </label>
+        <label class="row small muted costcol" style="gap:6px" title="Mã không có trong bảng này sẽ báo Chưa mở bán">Đối chiếu hàng đang bán:
+          <select id="kitSaleSel"></select>
+        </label>
+      </div>
+      <div class="chips" id="kitLines"></div>
+      <div id="kitNoPrice" class="hide costcol" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn)">
+        Chưa có bảng giá vốn bộ nhựa. Vào tab <b>📦 Bảng giá vốn</b>, mục <b>Bảng giá vốn bộ nhựa</b> để nhập (hoặc bấm ⇄ để chuyển một bảng có sẵn sang).
+      </div>
+    </div>
+    <div class="kits" id="kitGrid"></div>
+    <div class="card costcol" style="margin-top:16px">
+      <h2>Các phiên bộ nhựa đã lưu</h2>
+      <div class="sess" id="kitSessList"></div>
+    </div>
+  </div>
+
+  <div id="kitDetail" class="hide">
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn" id="kitBack">← Danh sách bộ nhựa</button>
+      <span class="grow"></span>
+      <button class="btn sm pri" id="kdPrint" title="In hoặc lưu PDF báo giá cho khách (không có giá vốn)">🖨️ In báo giá</button>
+      <button class="btn sm custbtn" data-cust></button>
+      <button class="btn sm" id="kitPrev">‹ Trước</button>
+      <button class="btn sm" id="kitNext">Sau ›</button>
+    </div>
+    <div class="card">
+      <div class="kitdetail">
+        <div>
+          <div class="bigimg" id="kdImg">🏍️</div>
+          <div class="thumbs" id="kdThumbs"></div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn sm costcol" id="kdAddImg">🖼️ Thêm / đổi ảnh</button>
+            <button class="btn sm bad costcol" id="kdDelImg">Xóa ảnh này</button>
+          </div>
+          <p class="small muted">Có thể dán ảnh (<kbd>Ctrl</kbd>+<kbd>V</kbd>) khi đang xem bộ nhựa.</p>
+        </div>
+        <div>
+          <div class="small muted costcol" id="kdSess"></div>
+          <div class="tag info" id="kdLine" style="margin-top:4px"></div>
+          <h2 style="font-size:22px;margin:2px 0 10px" id="kdName"></h2>
+          <div class="stats" style="margin-bottom:12px">
+            <div class="stat"><div class="k">Số món</div><div class="v" id="kdCount">0</div></div>
+            <div class="stat costcol" id="kdMissBox"><div class="k">Thiếu giá</div><div class="v" id="kdMiss">0</div></div>
+            <div class="stat costcol"><div class="k">Chưa mở bán</div><div class="v" id="kdNotSold" style="color:#6d28d9">0</div></div>
+            <div class="stat big costcol"><div class="k">Tổng giá vốn bộ</div><div class="v" id="kdTotal">0</div></div>
+            <div class="stat big sellcol"><div class="k">Giá bán cả bộ</div><div class="v" id="kdSellTotal">—</div></div>
+          </div>
+          <div class="tblwrap" style="max-height:55vh"><table id="kdTable"></table></div>
+          <div id="kdAdd" class="costcol"></div>
+          <div id="kdNotice"></div>
+          <button class="btn sm hide costcol" id="kdReset" style="margin-top:8px">↺ Khôi phục bộ gốc</button>
+        </div>
+      </div>
+    </div>
+    <div class="card sell costcol" id="kitSell"></div>
+  </div>
+</section>
+
+<!-- ================= BẢNG GIÁ ================= -->
+<section class="tab" id="tab-prices">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">🧾 Bảng giá vốn hóa đơn (hàng đang bán)</h2>
+      <button class="btn pri" data-import="inv">➕ Nhập bảng giá vốn hóa đơn</button>
+    </div>
+    <p class="small muted">Dùng để tính giá vốn hóa đơn, và để đối chiếu mã nào trong bộ nhựa <b>chưa mở bán</b>. Phiên viền xanh là phiên mặc định.</p>
+    <div class="sess" id="priceSessInv"></div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">🏍️ Bảng giá vốn bộ nhựa</h2>
+      <button class="btn pri" data-import="kit">➕ Nhập bảng giá vốn bộ nhựa</button>
+    </div>
+    <p class="small muted">Chạy riêng với hóa đơn: chỉ dùng để tính giá vốn các bộ nhựa. Nút ⇄ chuyển một phiên sang nhóm kia.</p>
+    <div class="sess" id="priceSessKit"></div>
+  </div>
+  <div class="card">
+    <h2>Tra nhanh giá vốn</h2>
+    <div class="row">
+      <select id="lookSess"></select>
+      <input type="search" id="lookQ" class="grow" placeholder="🔍 Gõ mã hàng hoặc tên…" style="max-width:420px">
+      <span class="small muted" id="lookInfo"></span>
+    </div>
+    <div class="tblwrap" style="margin-top:10px;max-height:60vh"><table id="lookTable"></table></div>
+  </div>
+</section>
+
+</main>
+
+<div id="toast"></div>
+<div id="printArea"></div>
+<input type="file" id="filePick" class="hide" accept=".xlsx,.xls,.xlsm,.csv,.txt,.ods">
+<input type="file" id="imgPick" class="hide" accept="image/*" multiple>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
