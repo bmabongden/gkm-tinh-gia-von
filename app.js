@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -81,7 +81,7 @@ async function selfUpdate(tag) {
   } catch { }
   busy('Đang tải bản mới…');
   try {
-    let files = ['index.html', 'app.js', 'sw.js', 'manifest.json', 'icon.svg', 'HUONG-DAN.md', 'README.md', 'lib/xlsx.full.min.js', 'lib/jszip.min.js', 'tonkho/gkm-tonkho.ps1', 'tonkho/chay-an.vbs', 'tonkho/cai-dat.bat', 'tonkho/go-cai-dat.bat'];
+    let files = ['index.html', 'app.js', 'sw.js', 'manifest.json', 'icon.svg', 'icon-192.png', 'gkm.ico', 'tao-bieu-tuong.bat', 'HUONG-DAN.md', 'README.md', 'lib/xlsx.full.min.js', 'lib/jszip.min.js', 'tonkho/gkm-tonkho.ps1', 'tonkho/chay-an.vbs', 'tonkho/cai-dat.bat', 'tonkho/go-cai-dat.bat'];
     try {
       const r = await fetch(`https://api.github.com/repos/${REPO}/git/trees/${encodeURIComponent(tag)}?recursive=1`, { cache: 'no-store' });
       if (r.ok) files = (await r.json()).tree.filter(x => x.type === 'blob' && !x.path.startsWith('.')).map(x => x.path);
@@ -1222,7 +1222,7 @@ function renderKitDetail() {
     <td class="n costcol">${r.cost == null || r.from === 'manual' ? `<input class="cost" data-i="${r.i}" placeholder="gõ giá…" value="${r.p.manual != null ? fmt(r.p.manual) : ''}">` : fmt(r.cost)}</td>
     <td class="n costcol"><b>${fmt(r.amount)}</b></td>
     <td class="n ${sc}">${fmt(ps(r))}</td><td class="n ${sc}"><b>${ps(r) == null ? '—' : fmt(ps(r) * r.p.qty)}</b></td>
-    <td class="costcol" style="white-space:nowrap">${r.sold ? '' : `<span class="tag sold" title="Mã này không có trong bảng hàng đang bán: cần tìm mã thay thế">Chưa mở bán</span> <button class="btn sm" data-alt="${r.i}" title="Tìm mã thay thế trong hàng đang bán">🔍 Mã thay thế</button>`}</td>
+    <td class="costcol" style="white-space:nowrap">${r.sold ? '' : `${loadStock() ? '' : '<span class="tag sold" title="Mã này không có trong bảng hàng đang bán: cần tìm mã thay thế">Chưa mở bán</span> '}<button class="btn sm" data-alt="${r.i}" title="Tìm mã thay thế trong hàng đang bán">🔍 Mã thay thế</button>`}</td>
     <td class="costcol"><button class="btn sm bad" data-del="${r.i}" title="Bớt món này">✕</button></td></tr>`).join('')}</tbody>
   <tfoot><tr><td></td><td colspan="2"><span class="costcol">TỔNG GIÁ VỐN BỘ</span><span class="sellcol">TỔNG CẢ BỘ</span></td><td class="n">${fmtQ(k.parts.reduce((a, p) => a + p.qty, 0))}</td>${loadStock() ? '<td></td>' : ''}<td class="costcol"></td><td class="n costcol">${fmt(c.total)}</td><td class="${sc}"></td><td class="n sellcol">${sellTotal == null ? '' : fmt(sellTotal)}</td><td class="costcol"></td><td class="costcol"></td></tr></tfoot>`;
   $$('#kdTable input.cost').forEach(inp => inp.onchange = async () => {

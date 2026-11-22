@@ -31,3 +31,6 @@ Bấm nút **🔄 Cập nhật** góc trên bên phải (cần có mạng, dùng
 
 ## Mật khẩu hiện giá vốn
 Vào **⚙️ Cài đặt** → *Mật khẩu hiện giá vốn*, gõ mỗi dòng một mật khẩu (dùng được nhiều mật khẩu, để trống là không cần). Khi đang ẩn giá vốn, bấm **👁 Hiện giá vốn** phải nhập đúng một mật khẩu. Tồn kho vẫn hiện khi ẩn giá vốn. Quên mật khẩu: ở ô nhập bấm *Quên mật khẩu?* để xem gợi ý, hoặc chọn thư mục app để xóa hết mật khẩu rồi đặt lại.
+
+## Biểu tượng trên màn hình
+Bấm đúp file `tao-bieu-tuong.bat` trong thư mục app. Màn hình Desktop sẽ có biểu tượng **GKM Tính giá vốn** (logo thẻ giá màu cam), từ sau bấm đúp vào đó để mở app.
