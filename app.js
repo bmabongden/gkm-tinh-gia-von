@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.2';
+const APP_VERSION = '1.3';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -46,17 +46,70 @@ async function checkUpdate() {
   const tag = rel.tag_name || '';
   if (!newer(tag, APP_VERSION)) return toast(`Đang dùng bản mới nhất (v${APP_VERSION}).`, 'ok', 3500);
   const zip = `https://github.com/${REPO}/archive/refs/tags/${encodeURIComponent(tag)}.zip`;
-  const body = `<p style="margin-top:0">Có bản mới <b>${esc(tag)}</b> (đang dùng v${APP_VERSION}).</p>
-    ${rel.body ? `<div class="small" style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;max-height:30vh;overflow:auto">${esc(rel.body)}</div>` : ''}
-    <p><b>Cách cập nhật mà không mất dữ liệu:</b></p>
-    <ol style="margin-top:0;padding-left:20px">
-      <li>Bấm <b>Tải bản mới</b> để tải file zip.</li>
-      <li>Giải nén, mở thư mục bên trong, chọn tất cả file rồi <b>chép đè vào đúng thư mục app đang dùng</b> (chọn “Thay thế” khi máy hỏi).</li>
-      <li>Đóng tab app rồi mở lại <code>index.html</code> như mọi khi. Bảng giá, bộ nhựa, ảnh vẫn còn nguyên.</li>
-    </ol>
-    <p class="small muted" style="margin-bottom:0">Đừng mở app từ thư mục mới giải nén, vì trình duyệt sẽ coi là app khác và không thấy dữ liệu cũ.</p>`;
-  const go = await modal({ title: '🔄 Cập nhật app', body, buttons: [{ text: 'Để sau', value: false }, { text: '⬇️ Tải bản mới', value: true, cls: 'pri' }] });
-  if (go) window.open(zip, '_blank');
+  const canSelf = typeof window.showDirectoryPicker === 'function';
+  const notes = rel.body ? `<div class="small" style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;max-height:30vh;overflow:auto">${esc(rel.body)}</div>` : '';
+  const folder = appFolderName();
+  const body = canSelf
+    ? `<p style="margin-top:0">Có bản mới <b>${esc(tag)}</b> (đang dùng v${APP_VERSION}).</p>${notes}
+      <p>Bấm <b>Cập nhật ngay</b>, rồi chọn thư mục app${folder ? ` <b>${esc(folder)}</b>` : ''} (thư mục đang chứa <code>index.html</code>) và bấm <b>Cho phép / Lưu thay đổi</b> khi trình duyệt hỏi. App tự tải bản mới, ghi đè vào đúng chỗ rồi mở lại.</p>
+      <p class="small muted" style="margin-bottom:0">Bảng giá, bộ nhựa, ảnh xe vẫn giữ nguyên.</p>`
+    : `<p style="margin-top:0">Có bản mới <b>${esc(tag)}</b> (đang dùng v${APP_VERSION}).</p>${notes}
+      <p>Trình duyệt này không cho app tự cập nhật (hãy dùng Chrome hoặc Edge). Cách làm tay: tải file zip, giải nén rồi chép đè tất cả file vào đúng thư mục app đang dùng.</p>`;
+  const go = await modal({ title: '🔄 Cập nhật app', body, buttons: [{ text: 'Để sau', value: false }, { text: canSelf ? '⚡ Cập nhật ngay' : '⬇️ Tải bản mới', value: true, cls: 'pri' }] });
+  if (!go) return;
+  if (canSelf) await selfUpdate(tag); else window.open(zip, '_blank');
+}
+/** Tên thư mục đang chứa index.html (lấy từ đường dẫn file:// đang mở) */
+function appFolderName() {
+  try { const parts = decodeURIComponent(location.pathname).split(/[\\/]/).filter(Boolean); return parts.length >= 2 ? parts[parts.length - 2] : ''; } catch { return ''; }
+}
+/** Tự cập nhật: tải các file của bản mới từ GitHub rồi ghi đè vào thư mục app người dùng chọn */
+async function selfUpdate(tag) {
+  let dir;
+  try { dir = await window.showDirectoryPicker({ id: 'gkm-app', mode: 'readwrite' }); }
+  catch (e) { if (e.name !== 'AbortError') toast('Không mở được thư mục: ' + e.message, 'bad', 4500); return; }
+  // Kiểm tra đúng thư mục app
+  try {
+    const f = await (await dir.getFileHandle('app.js')).getFile(), txt = await f.text();
+    await dir.getFileHandle('index.html');
+    if (!txt.includes('GKM') || !txt.includes('APP_VERSION')) throw new Error('x');
+  } catch { return toast('Thư mục này không phải thư mục app GKM (phải có index.html và app.js). Hãy chọn lại.', 'bad', 5000); }
+  const folder = appFolderName();
+  if (folder && dir.name !== folder && !await confirmBox(`Anh đang mở app từ thư mục <b>${esc(folder)}</b> nhưng lại chọn thư mục <b>${esc(dir.name)}</b>. Vẫn cập nhật thư mục <b>${esc(dir.name)}</b>?`, 'Vẫn cập nhật', false)) return;
+  try {
+    if ((await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') return toast('Chưa được cho phép ghi vào thư mục, chưa cập nhật.', 'bad', 4500);
+  } catch { }
+  busy('Đang tải bản mới…');
+  try {
+    let files = ['index.html', 'app.js', 'sw.js', 'manifest.json', 'icon.svg', 'HUONG-DAN.md', 'README.md', 'lib/xlsx.full.min.js', 'lib/jszip.min.js'];
+    try {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/git/trees/${encodeURIComponent(tag)}?recursive=1`, { cache: 'no-store' });
+      if (r.ok) files = (await r.json()).tree.filter(x => x.type === 'blob' && !x.path.startsWith('.')).map(x => x.path);
+    } catch { /* dùng danh sách mặc định */ }
+    if (!files.includes('index.html') || !files.includes('app.js')) throw new Error('bản mới thiếu file');
+    const got = [];
+    for (const [n, path] of files.entries()) {
+      busy(`Đang tải bản mới… ${n + 1}/${files.length}`);
+      const fr = await fetch(`https://raw.githubusercontent.com/${REPO}/${encodeURIComponent(tag)}/${path.split('/').map(encodeURIComponent).join('/')}`, { cache: 'no-store' });
+      if (!fr.ok) throw new Error(path + ' HTTP ' + fr.status);
+      got.push([path, await fr.blob()]);
+    }
+    // Đã tải đủ mới bắt đầu ghi, để không bị nửa cũ nửa mới. app.js ghi sau cùng.
+    got.sort((a, b) => (a[0] === 'app.js') - (b[0] === 'app.js'));
+    for (const [n, [path, blob]] of got.entries()) {
+      busy(`Đang ghi file… ${n + 1}/${got.length}`);
+      const segs = path.split('/'); let d = dir;
+      for (const sg of segs.slice(0, -1)) d = await d.getDirectoryHandle(sg, { create: true });
+      const w = await (await d.getFileHandle(segs[segs.length - 1], { create: true })).createWritable();
+      await w.write(blob); await w.close();
+    }
+    busy(null);
+    toast(`Đã cập nhật lên ${tag}. App đang mở lại…`, 'ok', 3000);
+    setTimeout(() => location.reload(), 1500);
+  } catch (e) {
+    busy(null);
+    toast('Cập nhật chưa xong: ' + e.message + '. Dữ liệu không bị ảnh hưởng, thử lại sau.', 'bad', 6000);
+  }
 }
 const LS = {
   get(k, d) { try { const v = localStorage.getItem('gkm.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },

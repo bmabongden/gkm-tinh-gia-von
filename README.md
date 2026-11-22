@@ -26,4 +26,4 @@ App chạy offline hoàn toàn trên trình duyệt (Chrome / Edge / Cốc Cốc
 Nút **🧹 Làm mới** góc trên: đưa mọi bộ nhựa đã sửa (mã thay thế, thêm / bớt món, số lượng) về bản gốc trong file, quên các mã thay thế đã nhớ, và xóa hóa đơn đang làm. Bảng giá vốn, các phiên bộ nhựa, ảnh xe và giá vốn tự điền tay được giữ nguyên.
 
 ## Cập nhật bản mới
-Bấm nút **🔄 Cập nhật** góc trên bên phải (cần có mạng). Nếu có bản mới, app hiện nội dung thay đổi và nút **Tải bản mới**. Giải nén file zip, rồi chép đè tất cả file vào **đúng thư mục app đang dùng**, sau đó mở lại `index.html`. Dữ liệu vẫn còn nguyên.
+Bấm nút **🔄 Cập nhật** góc trên bên phải (cần có mạng, dùng Chrome hoặc Edge). Nếu có bản mới, bấm **⚡ Cập nhật ngay**, chọn thư mục app (thư mục đang chứa `index.html`) và bấm *Cho phép* khi trình duyệt hỏi. App tự tải bản mới, ghi đè đúng chỗ và mở lại. Bảng giá, bộ nhựa, ảnh xe vẫn giữ nguyên.
