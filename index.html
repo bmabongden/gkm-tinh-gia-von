@@ -262,30 +262,18 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
       <div class="row" style="margin-top:12px">
         <input type="search" id="kitSearch" placeholder="🔍 Tìm tên xe / bộ nhựa / mã…" class="grow" style="max-width:360px">
         <select id="kitSessSel"></select>
-        <label class="row small muted costcol" style="gap:6px">Bảng giá vốn bộ nhựa:
-          <select id="kitPriceSel"></select>
-        </label>
-        <button class="btn sm costcol" id="kitPriceUpd" title="Thay phiên đang chọn bằng file bảng giá mới, giữ tên phiên">🔄 Cập nhật bảng giá này</button>
-        <button class="btn sm costcol" id="kitPriceNew" title="Nhập thêm một bảng giá vốn bộ nhựa thành phiên mới">➕ Phiên mới</button>
+        <button class="btn sm costcol" id="kitPriceUpd" title="Chọn file bảng giá Honda mới để thay bảng giá vốn bộ nhựa">🔄 Cập nhật bảng giá vốn bộ nhựa</button>
       </div>
       <div class="small muted costcol" id="kitPriceInfo" style="margin-top:6px"></div>
       <div class="chips" id="kitLines"></div>
       <div id="kitNoPrice" class="hide costcol" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn)">
-        Chưa có bảng giá vốn bộ nhựa. Bấm <b>➕ Phiên mới</b> ở trên để nhập bảng giá Honda.
+        Chưa có bảng giá vốn bộ nhựa. Bấm <b>➕ Nhập bảng giá vốn bộ nhựa</b> ở trên để nhập bảng giá Honda.
       </div>
     </div>
     <div class="kits" id="kitGrid"></div>
     <div class="card costcol" style="margin-top:16px">
       <h2>Các phiên bộ nhựa đã lưu</h2>
       <div class="sess" id="kitSessList"></div>
-    </div>
-    <div class="card costcol" style="margin-top:16px">
-      <div class="row" style="justify-content:space-between">
-        <h2 style="margin:0">🏍️ Bảng giá vốn bộ nhựa</h2>
-        <button class="btn pri" data-import="kit">➕ Nhập bảng giá vốn bộ nhựa</button>
-      </div>
-      <p class="small muted">Bảng giá Honda dùng để tính giá vốn các bộ nhựa. Có thể lưu nhiều phiên; mỗi phiên bấm <b>🔄 Cập nhật</b> để thay bằng file mới bất cứ lúc nào. Phiên viền xanh là phiên mặc định.</p>
-      <div class="sess" id="priceSessKit"></div>
     </div>
   </div>
 

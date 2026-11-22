@@ -11,7 +11,7 @@ App chạy offline hoàn toàn trên trình duyệt (Chrome / Edge / Cốc Cốc
 ## Các bước dùng
 1. **📦 Lấy bảng giá & tồn kho KiotViet** (nút cam trên cùng): app tự lấy giá vốn, giá bán, tên hàng và tồn kho mới nhất từ KiotViet, dùng chung cho cả hóa đơn và bộ nhựa. Không cần nhập tay bảng giá hóa đơn.
 2. **🧾 Hóa đơn**: kéo thả file `ChiTietHoaDon_….xlsx`. App hiện giá vốn, giá bán (lấy từ hóa đơn, thiếu thì lấy theo bảng giá), tiền vốn, tiền bán và chênh lệch từng món và tổng. Sửa SL trong ô, ✕ để bớt, ô ➕ để thêm món. Khi đã thêm/bớt sẽ có khung vàng thông báo ở dưới, có nút khôi phục bản gốc. Muốn tạo đơn bằng tay: gõ tên hoặc mã vào ô **🔍 Tìm sản phẩm thêm vào đơn**, chọn món, nhập số lượng rồi bấm Thêm. Dòng trên cùng của tab ghi giá vốn KiotViet đang dùng cập nhật lúc nào.
-3. **🏍️ Bộ nhựa**: nhập file bộ nhựa và **bảng giá vốn bộ nhựa** (bảng giá Honda, ở cuối tab Bộ nhựa), rồi chọn bảng giá ở ô *Bảng giá vốn bộ nhựa*. Mã không có trên KiotViet được gắn nhãn tím **Chưa mở bán**.
+3. **🏍️ Bộ nhựa**: nhập file bộ nhựa, rồi bấm **🔄 Cập nhật bảng giá vốn bộ nhựa** (bảng giá Honda, chỉ một bảng) ở đầu tab. Mã không có trên KiotViet được gắn nhãn tím **Chưa mở bán**.
    - Nút **🙈 Ẩn giá vốn**: chế độ cho khách xem, chỉ hiện giá bán.
    - Thanh **dòng xe** (SH Mode, Vision, Lead, Wave Alpha…) phía trên danh sách: bấm để lọc nhanh theo dòng xe.
    - Nút **🔍 Mã thay thế** cạnh nhãn *Chưa mở bán*: gợi ý các mã đang bán có phần đầu giống nhất, bấm *Chọn* để thay. Nếu mã cũ còn ở bộ nhựa khác (kể cả phiên khác), app hỏi *Thay tất cả* hay *Chỉ món này*. Chọn *Thay tất cả* thì app nhớ lại và tự thay cả khi nhập file bộ nhựa mới sau này.
@@ -45,4 +45,4 @@ Nút **📦 Lấy bảng giá & tồn kho KiotViet** (nút cam trên cùng, cạ
 Tên chi tiết trong bộ nhựa lấy theo tên hàng trên KiotViet; mã nào KiotViet không có mới dùng tên trong file bộ nhựa.
 
 ## Cập nhật bảng giá vốn bộ nhựa
-Ở đầu tab Bộ nhựa, cạnh ô **Bảng giá vốn bộ nhựa**: bấm **🔄 Cập nhật bảng giá này** để thay phiên đang chọn bằng file bảng giá Honda mới (giữ tên phiên), hoặc **➕ Phiên mới** để thêm một phiên khác. Dòng bên dưới ghi phiên đang dùng cập nhật lúc nào. Danh sách đầy đủ các phiên (đặt mặc định, đổi tên, xóa) ở cuối tab.
+App chỉ dùng **một** bảng giá vốn bộ nhựa (bảng giá Honda). Ở đầu tab Bộ nhựa bấm **🔄 Cập nhật bảng giá vốn bộ nhựa**, chọn file mới: bảng cũ được thay luôn và các bộ nhựa tính lại theo giá mới. Dòng bên dưới ghi bảng giá cập nhật lúc nào, từ file nào.

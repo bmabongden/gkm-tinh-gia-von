@@ -704,9 +704,7 @@ function renderPriceList(kind, el) {
     }
   });
 }
-function renderPrices() {
-  renderPriceList('kit', $('#priceSessKit'));
-}
+function renderPrices() {}
 
 /* ================= THÊM / BỚT SẢN PHẨM (dùng chung) ================= */
 /** So sánh danh sách hiện tại với bản gốc: trả về thêm / bớt / đổi số lượng */
@@ -1038,7 +1036,12 @@ function ensureKit(k) {
   k.orig = k.parts.map(p => ({ id: p.id, code: p.code, qty: p.qty }));
   k.origFull = k.parts.map(p => ({ ...p }));
 }
-function kitPriceSource() { return $('#kitPriceSel').value; }
+/** Chỉ dùng MỘT bảng giá vốn bộ nhựa (bảng giá Honda); chưa có thì dùng giá sẵn trong file bộ nhựa */
+function kitPriceTable() {
+  const list = S.prices.filter(p => sessKind(p) === 'kit'), cur = LS.get('kitPrice');
+  return list.find(p => p.id === cur) || list.find(p => p.id === defaultPriceId('kit')) || list[list.length - 1] || null;
+}
+function kitPriceSource() { const t = kitPriceTable(); return t ? t.id : 'file'; }
 function kitSaleSource() { return defaultPriceId('inv') || ''; }
 function computeKit(kit) {
   ensureKit(kit);
@@ -1116,26 +1119,24 @@ function renderKitSelects() {
   const ss = $('#kitSessSel'), cur = ss.value;
   ss.innerHTML = `<option value="">Tất cả phiên (${S.kits.reduce((a, s) => a + s.kits.length, 0)} bộ)</option>` + S.kits.map(s => `<option value="${s.id}">${esc(s.name)} (${s.kits.length})</option>`).join('');
   if (S.kits.some(s => s.id === cur)) ss.value = cur;
-  const kitTables = S.prices.filter(p => sessKind(p) === 'kit');
-  const ps = $('#kitPriceSel'), pcur = LS.get('kitPrice');
-  ps.innerHTML = kitTables.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('') + `<option value="file">Giá có sẵn trong file bộ nhựa</option>`;
-  ps.value = [...ps.options].some(o => o.value === pcur) ? pcur : (kitTables.length ? (defaultPriceId('kit') || kitTables[0].id) : 'file');
-  $('#kitNoPrice').classList.toggle('hide', !!kitTables.length);
-  renderKitPriceInfo();
+  const t = kitPriceTable();
+  $('#kitNoPrice').classList.toggle('hide', !!t);
+  const el = $('#kitPriceInfo');
+  el.innerHTML = t ? `💾 Bảng giá vốn bộ nhựa: ${t.items.length.toLocaleString('vi-VN')} mã · ${t.updatedAt ? 'cập nhật' : 'nhập'} lúc <b>${fmtTime(t.updatedAt || t.createdAt)}</b>${t.fileName ? ` · file ${esc(t.fileName)}` : ''}` : '';
+  $('#kitPriceUpd').innerHTML = t ? '🔄 Cập nhật bảng giá vốn bộ nhựa' : '➕ Nhập bảng giá vốn bộ nhựa';
 }
-/** Dòng thông tin + nút cập nhật bảng giá vốn bộ nhựa đang chọn (đặt ngay cạnh ô chọn) */
-function renderKitPriceInfo() {
-  const el = $('#kitPriceInfo'); if (!el) return;
-  const p = S.prices.find(x => x.id === $('#kitPriceSel').value && sessKind(x) === 'kit');
-  el.innerHTML = p ? `💾 Phiên <b>${esc(p.name)}</b>: ${p.items.length.toLocaleString('vi-VN')} mã, ${p.updatedAt ? 'cập nhật' : 'nhập'} lúc ${fmtTime(p.updatedAt || p.createdAt)}` : 'Chưa chọn bảng giá vốn bộ nhựa';
-  $('#kitPriceUpd').classList.toggle('hide', !p);
-}
+/** Thay bảng giá bộ nhựa bằng file mới; bảng cũ thừa (nếu từng nhập nhiều) bị gộp bỏ để chỉ còn 1 bảng */
 async function updKitPrice() {
-  const id = $('#kitPriceSel').value, p = S.prices.find(x => x.id === id && sessKind(x) === 'kit');
-  if (!p) return newKitPrice();
-  const f = await pickFile(); if (f) importPrices(f, id, 'kit');
+  const f = await pickFile(); if (!f) return;
+  const t = kitPriceTable();
+  const n = await importPrices(f, t ? t.id : null, 'kit');
+  if (!n) return;
+  const keep = kitPriceTable();
+  for (const x of S.prices.filter(p => sessKind(p) === 'kit' && p !== keep)) { await DB.del('prices', x.id); S.idx.delete(x.id); }
+  S.prices = S.prices.filter(p => sessKind(p) !== 'kit' || p === keep);
+  if (keep) { LS.set('kitPrice', keep.id); LS.set('defPrice.kit', keep.id); }
+  refreshAll();
 }
-async function newKitPrice() { const f = await pickFile(); if (f) importPrices(f, null, 'kit'); }
 function renderKits() {
   renderKitSelects();
   const m = makeMatcher($('#kitSearch').value, 5);
@@ -1188,8 +1189,8 @@ function renderKitDetail() {
   const ck = curKit(); if (!ck || !ck.k) { closeKit(); return; }
   const { s, k } = ck;
   const c = computeKit(k);
-  const src = $('#kitPriceSel').selectedOptions[0];
-  $('#kdSess').textContent = `Phiên: ${s.name} · Giá vốn: ${src ? src.text : ''}${kitSaleSource() ? ' · Đối chiếu hàng đang bán: KiotViet' : ''}${loadStock() ? ` · Tồn kho lúc ${fmtTime(loadStock().at)}${c.short ? ` (${c.short} món thiếu hàng)` : ' (đủ hàng)'}` : ''}`;
+  const kt = kitPriceTable();
+  $('#kdSess').textContent = `Phiên: ${s.name} · Giá vốn: ${kt ? 'bảng giá bộ nhựa cập nhật lúc ' + fmtTime(kt.updatedAt || kt.createdAt) : 'giá có sẵn trong file bộ nhựa'}${kitSaleSource() ? ' · Đối chiếu hàng đang bán: KiotViet' : ''}${loadStock() ? ` · Tồn kho lúc ${fmtTime(loadStock().at)}${c.short ? ` (${c.short} món thiếu hàng)` : ' (đủ hàng)'}` : ''}`;
   $('#kdName').textContent = k.name;
   $('#kdLine').textContent = '🏍️ ' + (k.line || kitLine(k.name));
   $('#kdCount').textContent = k.parts.length;
@@ -1782,8 +1783,7 @@ async function init() {
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };
   S.kitLine = LS.get('kitLine', '');
   $('#kitSessSel').onchange = renderKits;
-  $('#kitPriceSel').onchange = () => { LS.set('kitPrice', $('#kitPriceSel').value); S.kitView ? renderKitDetail() : renderKits(); };
-  $('#kitPriceUpd').onclick = updKitPrice; $('#kitPriceNew').onclick = newKitPrice;
+  $('#kitPriceUpd').onclick = updKitPrice;
   let kt; $('#kitSearch').oninput = () => { clearTimeout(kt); kt = setTimeout(renderKits, 120); };
   $('#kitBack').onclick = closeKit;
   $('#kdPrint').onclick = printKitQuote;
