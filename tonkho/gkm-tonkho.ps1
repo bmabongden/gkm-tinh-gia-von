@@ -4,7 +4,7 @@
 # - Chỉ nhận lệnh từ chính máy này (127.0.0.1), không mở ra mạng ngoài.
 # - Không lưu mật khẩu: anh tự đăng nhập KiotViet một lần trong cửa sổ riêng, Edge riêng tự nhớ.
 $ErrorActionPreference = 'Stop'
-$Version = '1.0'
+$Version = '1.1'
 $Port = 47321
 $DebugPort = 9333
 $Base = Join-Path $env:LOCALAPPDATA 'GKM-TonKho'
@@ -190,10 +190,15 @@ function Export-Products([string]$shop) {
 }
 
 # Mở cửa sổ riêng để anh đăng nhập KiotViet (chỉ cần một lần)
-function Open-Login([string]$shop) {
+function Open-Login([string]$shop, [bool]$fresh) {
   $info = Get-DebugInfo
+  if ($fresh -and -not $info) { $info = Ensure-Browser $false 'about:blank' }
   if ($info) {
-    try { Cdp-Connect $info.webSocketDebuggerUrl; Cdp-Send 'Browser.close' @{} $null | Out-Null } catch { } finally { Cdp-Close }
+    try {
+      Cdp-Connect $info.webSocketDebuggerUrl
+      if ($fresh) { Cdp-Send 'Storage.clearCookies' @{} $null | Out-Null; Log 'Đã đăng xuất KiotViet (xóa cookie hồ sơ riêng)' }
+      Cdp-Send 'Browser.close' @{} $null | Out-Null
+    } catch { } finally { Cdp-Close }
     for ($i = 0; $i -lt 20 -and (Get-DebugInfo); $i++) { Start-Sleep -Milliseconds 300 }
   }
   Ensure-Browser $true (Products-Url $shop) | Out-Null
@@ -241,7 +246,8 @@ while ($true) {
     if ($pathOnly -eq '/ping') { Send-Json $stream 200 @{ ok = $true; version = $Version; browser = [bool](Find-Browser) }; continue }
     if (-not $shop) { Send-Json $stream 400 @{ error = 'bad_shop'; message = 'Tên cửa hàng KiotViet không hợp lệ' }; continue }
     try {
-      if ($pathOnly -eq '/login') { Open-Login $shop; Send-Json $stream 200 @{ ok = $true } }
+      if ($pathOnly -eq '/login') { Open-Login $shop $false; Send-Json $stream 200 @{ ok = $true } }
+      elseif ($pathOnly -eq '/logout') { Open-Login $shop $true; Send-Json $stream 200 @{ ok = $true } }
       elseif ($pathOnly -eq '/export') {
         $r = Export-Products $shop
         Send-Resp $stream 200 'application/octet-stream' $r.bytes $r.name

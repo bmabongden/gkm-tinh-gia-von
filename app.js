@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.6';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1334,19 +1334,50 @@ const TK = 'http://127.0.0.1:47321';
 async function tkPing() {
   try { const r = await fetch(TK + '/ping', { cache: 'no-store', signal: AbortSignal.timeout(2500) }); return r.ok ? await r.json() : null; } catch { return null; }
 }
-async function kvShop(ask) {
-  let shop = LS.get('kvShop', '');
-  if (!shop || ask) {
-    const v = await promptBox('Địa chỉ KiotViet của cửa hàng', 'Phần đầu địa chỉ trang KiotViet, ví dụ trang <b>abc.kiotviet.vn</b> thì gõ <b>abc</b>', shop);
-    if (v == null) return null;
-    shop = String(v).trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\.kiotviet\.vn.*$/, '').replace(/[^a-z0-9-]/g, '');
-    if (!shop) return null;
-    LS.set('kvShop', shop);
-  }
-  return shop;
+const KV_DEFAULT_SHOP = 'ptxmgkk';
+const cleanShop = v => String(v || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\.kiotviet\.vn.*$/, '').replace(/[^a-z0-9-]/g, '');
+const kvShop = () => cleanShop(LS.get('kvShop', '')) || KV_DEFAULT_SHOP;
+async function tkCall(path) {
+  const r = await fetch(`${TK}/${path}?shop=${encodeURIComponent(kvShop())}`, { cache: 'no-store', signal: AbortSignal.timeout(30000) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+/* ===== Cài đặt: cửa hàng KiotViet, đăng nhập / đổi tài khoản ===== */
+async function openSettings() {
+  const body = `<div style="font-weight:700;margin-bottom:8px">🔗 KiotViet (lấy tồn kho)</div>
+    <label class="fld"><span>Địa chỉ cửa hàng KiotViet</span>
+      <div style="display:flex;align-items:center;gap:6px"><input type="text" data-shop value="${esc(kvShop())}" style="flex:1"><span class="muted">.kiotviet.vn</span></div></label>
+    <div data-st class="small muted" style="margin:10px 0">Đang kiểm tra chương trình GKM Tồn kho…</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn pri" data-login>🔑 Đăng nhập KiotViet</button>
+      <button class="btn" data-switch>🔁 Đổi tài khoản</button>
+    </div>
+    <p class="small muted" style="margin:12px 0 0">Bấm nút sẽ mở một cửa sổ Edge <b>riêng</b> (không đụng tới Chrome đang dùng). Đăng nhập xong thì <b>đóng cửa sổ đó</b>, từ sau bấm 📦 Lấy tồn kho là app tự lấy. <i>Đổi tài khoản</i> sẽ đăng xuất tài khoản cũ trong cửa sổ riêng đó rồi mở trang đăng nhập.</p>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0 10px">
+    <div class="small muted">Phiên bản app: v${APP_VERSION}</div>`;
+  await modal({
+    title: '⚙️ Cài đặt', body, buttons: [{ text: 'Xong', cls: 'pri', value: true }],
+    onOpen: async mb => {
+      const inp = $('[data-shop]', mb), st = $('[data-st]', mb);
+      const save = () => { const v = cleanShop(inp.value); if (v) { LS.set('kvShop', v); inp.value = v; } else inp.value = kvShop(); };
+      inp.onchange = save;
+      const ping = await tkPing();
+      st.innerHTML = ping ? '✅ Chương trình GKM Tồn kho đang chạy trên máy này.' : '⚠️ Chương trình GKM Tồn kho <b>chưa chạy</b>. Vào thư mục app → <b>tonkho</b> → bấm đúp <b>cai-dat.bat</b> (cài một lần).';
+      const run = async (path, msg) => {
+        save();
+        if (!await tkPing()) return toast('Chương trình GKM Tồn kho chưa chạy. Bấm đúp tonkho\\cai-dat.bat trong thư mục app trước.', 'bad', 6000);
+        try { await tkCall(path); toast(msg, 'ok', 6000); }
+        catch (e) {
+          if (path === 'logout' && /404/.test(e.message)) { try { await tkCall('login'); } catch { } return toast('Chương trình GKM Tồn kho đang là bản cũ, chưa tự đăng xuất được. Trong cửa sổ vừa mở anh bấm Đăng xuất rồi đăng nhập tài khoản khác (hoặc khởi động lại máy để dùng bản mới).', 'bad', 9000); }
+          toast('Không mở được cửa sổ đăng nhập: ' + e.message, 'bad', 6000);
+        }
+      };
+      $('[data-login]', mb).onclick = () => run('login', `Đã mở cửa sổ KiotViet ${kvShop()}. Đăng nhập xong thì đóng cửa sổ đó.`);
+      $('[data-switch]', mb).onclick = async () => { if (await confirmBox('Đăng xuất tài khoản KiotViet hiện tại trong cửa sổ riêng và đăng nhập tài khoản khác?', 'Đổi tài khoản', false)) run('logout', 'Đã đăng xuất. Đăng nhập tài khoản mới trong cửa sổ vừa mở, xong thì đóng cửa sổ đó.'); };
+    }
+  });
 }
 async function stockAuto() {
-  const shop = await kvShop(false); if (!shop) return;
+  const shop = kvShop();
   busy('Đang vào KiotViet lấy tồn kho… (khoảng 20 – 60 giây)');
   let r;
   try { r = await fetch(`${TK}/export?shop=${encodeURIComponent(shop)}`, { cache: 'no-store', signal: AbortSignal.timeout(240000) }); }
@@ -1354,9 +1385,9 @@ async function stockAuto() {
   if (r.status === 409) {
     busy(null);
     const go = await modal({ title: '🔑 Cần đăng nhập KiotViet', body: `<p style="margin-top:0">Chương trình lấy tồn kho dùng một cửa sổ Edge <b>riêng</b> (không đụng tới Chrome anh đang dùng). Cửa sổ đó chưa đăng nhập KiotViet hoặc đã hết hạn đăng nhập.</p>
-      <p>Bấm <b>Mở cửa sổ đăng nhập</b>, đăng nhập KiotViet <b>${esc(shop)}</b> trong cửa sổ hiện ra (nhớ tích <i>Duy trì đăng nhập</i> nếu có), rồi <b>đóng cửa sổ đó</b> và bấm lại nút Lấy tồn kho.</p>`,
-      buttons: [{ text: 'Đổi địa chỉ cửa hàng', value: 'shop' }, { text: 'Mở cửa sổ đăng nhập', value: 'login', cls: 'pri' }] });
-    if (go === 'shop') { await kvShop(true); return; }
+      <p>Bấm <b>Mở cửa sổ đăng nhập</b>, đăng nhập KiotViet <b>${esc(shop)}</b> trong cửa sổ hiện ra (nhớ tích <i>Duy trì đăng nhập</i> nếu có), rồi <b>đóng cửa sổ đó</b> và bấm lại nút Lấy tồn kho. Đổi cửa hàng hoặc tài khoản: vào <b>⚙️ Cài đặt</b>.</p>`,
+      buttons: [{ text: '⚙️ Cài đặt', value: 'shop' }, { text: 'Mở cửa sổ đăng nhập', value: 'login', cls: 'pri' }] });
+    if (go === 'shop') { await openSettings(); return; }
     if (go === 'login') { try { await fetch(`${TK}/login?shop=${encodeURIComponent(shop)}`, { cache: 'no-store' }); } catch { } }
     return;
   }
@@ -1578,6 +1609,7 @@ async function init() {
   // bộ nhựa
   $('#updBtn').onclick = checkUpdate;
   $('#resetBtn').onclick = resetWork;
+  $('#setBtn').onclick = openSettings;
   $('#stockBtn').onclick = fetchStock; renderStockBtn();
   $('#updBtn').title = `Đang dùng v${APP_VERSION}. Bấm để kiểm tra bản mới.`;
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };
