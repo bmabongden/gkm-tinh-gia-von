@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '2.4';
+const APP_VERSION = '2.5';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -570,13 +570,13 @@ function blobUrl(b) { if (!b) return ''; let u = urlCache.get(b); if (!u) { u = 
 /* ---------------- tính giá bán ---------------- */
 const OPS = { '+': (a, b) => a + b, '-': (a, b) => a - b, '*': (a, b) => a * b, '/': (a, b) => b ? a / b : NaN, '%': (a, b) => a * (1 + b / 100) };
 const OP_LABEL = { '+': '+', '-': '−', '*': '×', '/': '÷', '%': '+%' };
-function sellCfg(ctx) { return LS.get('sell.' + ctx, { op: '*', val: '', round: 0 }); }
+// v2.5: mặc định phép nhân, bỏ làm tròn (đưa cấu hình cũ về phép × một lần)
+if (!LS.get('sellV25')) { for (const c of ['inv', 'kit']) { const o = LS.get('sell.' + c); if (o) LS.set('sell.' + c, { op: '*', val: o.op === '*' ? o.val : '' }); } LS.set('sellV25', 1); }
+function sellCfg(ctx) { const c = LS.get('sell.' + ctx, { op: '*', val: '' }); return OPS[c.op] ? c : { ...c, op: '*' }; }
 function sellPrice(cost, cfg) {
   const v = parseNum(cfg.val);
   if (cost == null || v == null) return null;
-  let r = OPS[cfg.op](cost, v);
-  if (cfg.round && isFinite(r)) r = Math.round(r / cfg.round) * cfg.round;
-  return r;
+  return OPS[cfg.op](cost, v);
 }
 /** Vẽ ô tính giá bán; onChange gọi lại khi đổi cấu hình */
 function renderSell(el, ctx, cost, onChange) {
@@ -587,20 +587,18 @@ function renderSell(el, ctx, cost, onChange) {
     <h2>💰 Tính giá bán</h2>
     <div class="formula">
       <span>Giá vốn <b>${fmt(cost)}</b></span>
-      <div class="ops">${Object.keys(OPS).map(o => `<button data-op="${o}" class="${cfg.op === o ? 'on' : ''}" title="${o === '%' ? 'Cộng thêm phần trăm' : ''}">${OP_LABEL[o]}</button>`).join('')}</div>
+      <button class="opcur" data-opt title="Bấm để đổi phép tính (mặc định là nhân)">${OP_LABEL[cfg.op]}</button>
+      <div class="ops hide" data-ops>${Object.keys(OPS).map(o => `<button data-op="${o}" class="${cfg.op === o ? 'on' : ''}" title="${o === '%' ? 'Cộng thêm phần trăm' : ''}">${OP_LABEL[o]}</button>`).join('')}</div>
       <input type="text" inputmode="decimal" data-val value="${esc(cfg.val)}" placeholder="${cfg.op === '%' ? 'vd 20' : cfg.op === '*' ? 'vd 1,3' : 'nhập số'}" style="width:140px;font-size:16px;font-weight:700">
       <span>=</span>
       <span class="res" data-res>${res == null ? '…' : fmt(res)}</span>
     </div>
     <div class="row small muted" style="margin-top:8px">
-      <label class="row" style="gap:6px">Làm tròn
-        <select data-round>${[[0, 'Không'], [100, '100'], [500, '500'], [1000, '1.000'], [5000, '5.000'], [10000, '10.000']].map(([v, t]) => `<option value="${v}" ${+cfg.round === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
-      </label>
       <span data-diff>${diff != null ? `Chênh lệch so với giá vốn: <b style="color:${diff >= 0 ? 'var(--ok)' : 'var(--bad)'}">${diff >= 0 ? '+' : ''}${fmt(diff)}</b>${cost ? ` (${(diff / cost * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%)` : ''}` : ''}</span>
     </div>`;
   const save = (patch, redraw) => { LS.set('sell.' + ctx, { ...sellCfg(ctx), ...patch }); onChange && onChange(); if (redraw) renderSell(el, ctx, cost, onChange); };
   $$('[data-op]', el).forEach(b => b.onclick = () => save({ op: b.dataset.op }, true));
-  $('[data-round]', el).onchange = e => save({ round: +e.target.value }, true);
+  $('[data-opt]', el).onclick = () => $('[data-ops]', el).classList.toggle('hide');
   const inp = $('[data-val]', el);
   inp.oninput = () => {
     LS.set('sell.' + ctx, { ...sellCfg(ctx), val: inp.value });
@@ -1201,7 +1199,6 @@ function renderKitDetail() {
   const img = k.images[kdImgIdx];
   const big = $('#kdImg');
   big.style.backgroundImage = img ? `url('${blobUrl(img)}')` : ''; big.textContent = img ? '' : '🏍️';
-  $('#kdDelImg').classList.toggle('hide', !img);
   $('#kdThumbs').innerHTML = k.images.length > 1 ? k.images.map((b, i) => `<div data-i="${i}" class="${i === kdImgIdx ? 'on' : ''}" style="background-image:url('${blobUrl(b)}')"></div>`).join('') : '';
   $$('#kdThumbs div').forEach(d => d.onclick = () => { kdImgIdx = +d.dataset.i; renderKitDetail(); });
 
@@ -1684,15 +1681,6 @@ async function resetWork() {
   toast('Đã làm mới. Bộ nhựa về bản gốc, hóa đơn đã xóa.', 'ok', 4000);
 }
 function closeKit() { S.kitView = null; $('#kitDetail').classList.add('hide'); $('#kitList').classList.remove('hide'); renderKits(); }
-async function addKitImages(files) {
-  const ck = curKit(); if (!ck) return;
-  let n = 0;
-  for (const f of files) { const b = await compressImage(f); if (b) { ck.k.images.unshift(b); n++; } }
-  if (!n) return toast('Không đọc được ảnh', 'bad');
-  kdImgIdx = 0;
-  try { await DB.put('kits', ck.s); } catch (e) { return toast('Lỗi lưu ảnh: ' + e.message, 'bad'); }
-  toast('Đã thêm ảnh', 'ok'); renderKitDetail();
-}
 
 /* ================= KHỞI ĐỘNG ================= */
 function renderPriceSelects() {
@@ -1805,17 +1793,6 @@ async function init() {
     k.parts = k.origFull.map(p => ({ ...p, manual: manual.get(p.id) ?? p.manual }));
     await saveKit(ck.s); renderKitDetail(); toast('Đã khôi phục bộ gốc', 'ok');
   };
-  $('#kdAddImg').onclick = () => { const p = $('#imgPick'); p.value = ''; p.onchange = () => addKitImages([...p.files]); p.click(); };
-  $('#kdDelImg').onclick = async () => {
-    const ck = curKit(); if (!ck || !ck.k.images[kdImgIdx]) return;
-    if (!await confirmBox('Xóa ảnh này khỏi bộ nhựa?', 'Xóa')) return;
-    ck.k.images.splice(kdImgIdx, 1); kdImgIdx = 0; await DB.put('kits', ck.s); renderKitDetail();
-  };
-  document.addEventListener('paste', e => {
-    if (!S.kitView || !$('#tab-kits').classList.contains('on') || /INPUT|TEXTAREA/.test(e.target.tagName)) return;
-    const files = [...(e.clipboardData?.items || [])].filter(i => i.type.startsWith('image/')).map(i => i.getAsFile());
-    if (files.length) { e.preventDefault(); addKitImages(files); }
-  });
   document.addEventListener('keydown', e => {
     if (!S.kitView || $('.modal-bg') || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
     if (e.key === 'ArrowLeft') $('#kitPrev').click();

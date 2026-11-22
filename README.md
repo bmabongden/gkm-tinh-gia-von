@@ -19,7 +19,7 @@ App chạy offline hoàn toàn trên trình duyệt (Chrome / Edge / Cốc Cốc
    - Nút **🖨️ In phiếu nhặt hàng** và **🖼️ Ảnh phiếu nhặt (Zalo)**: danh sách mã để đi nhặt nhựa trong kho, không có giá (xem mục bên dưới).
    - Hóa đơn: món bán thấp hơn giá vốn tô cam, có nhãn *Bán lỗ* và bộ lọc *Chỉ món lỗ*.
    - Ô *Thêm sản phẩm*: gõ vài chữ của mã hoặc tên là ra gợi ý, dùng ↑ ↓ Enter để chọn.
-4. **Tính giá bán theo công thức** (+ − × ÷ +%) nằm dưới hóa đơn và dưới mỗi bộ nhựa.
+4. **Tính giá bán**: mặc định là phép nhân (giá vốn × hệ số, vd 1,3), không làm tròn. Muốn đổi sang + − ÷ +% thì bấm vào dấu × để hiện các phép khác. Ảnh bộ nhựa lấy nguyên từ file bộ nhựa, không sửa trong app.
 
 ## Làm mới
 Nút **🧹 Làm mới** góc trên: đưa mọi bộ nhựa đã sửa (mã thay thế, thêm / bớt món, số lượng) về bản gốc trong file, quên các mã thay thế đã nhớ, và xóa hóa đơn đang làm. Bảng giá vốn, các phiên bộ nhựa, ảnh xe và giá vốn tự điền tay được giữ nguyên.
