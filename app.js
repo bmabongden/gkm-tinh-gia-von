@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.9';
+const APP_VERSION = '2.0';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1503,6 +1503,101 @@ async function printKitQuote() {
   if (im && !im.complete) { im.onload = im.onerror = go; } else go();
 }
 window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
+/* ===== Báo giá dạng ảnh: chép rồi dán thẳng vào Zalo ===== */
+function loadImg(src) { return new Promise(res => { if (!src) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); }
+function wrapText(ctx, text, maxW) {
+  const words = String(text || '').split(/\s+/).filter(Boolean), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; } }
+  if (cur) lines.push(cur); return lines.length ? lines : [''];
+}
+/** Vẽ báo giá lên canvas. Chạy 2 lần: lần đầu đo chiều cao, lần sau vẽ thật. */
+function drawQuote(ctx, q, img) {
+  const W = 1080, P = 48, F = 'Arial, Helvetica, sans-serif', BLUE = '#1565c0', ORANGE = '#ef6c00';
+  let y = 0;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, 99999);
+  // đầu trang
+  ctx.fillStyle = BLUE; ctx.fillRect(0, 0, W, 120);
+  ctx.fillStyle = '#fff'; ctx.font = `900 54px ${F}`; ctx.textBaseline = 'alphabetic'; ctx.fillText('GKM', P, 74);
+  ctx.font = `700 20px ${F}`; ctx.fillText('BÁO GIÁ BỘ NHỰA', P, 102);
+  ctx.textAlign = 'right'; ctx.font = `400 22px ${F}`; ctx.fillText('Ngày ' + new Date().toLocaleDateString('vi-VN'), W - P, 74); ctx.textAlign = 'left';
+  y = 120 + 44;
+  // tên bộ
+  ctx.fillStyle = '#0f172a'; ctx.font = `700 34px ${F}`;
+  for (const l of wrapText(ctx, q.k.name, W - 2 * P)) { ctx.fillText(l, P, y); y += 44; }
+  y += 6;
+  // ảnh xe
+  if (img) {
+    const mw = W - 2 * P, mh = 460, r = Math.min(mw / img.width, mh / img.height, 2), iw = img.width * r, ih = img.height * r;
+    ctx.drawImage(img, (W - iw) / 2, y, iw, ih); y += ih + 24;
+  }
+  // bảng
+  const cols = q.perPart ? [['#', 50, 'c'], ['Mã hàng', 230, 'l'], ['Tên chi tiết', 0, 'l'], ['SL', 60, 'r'], ['Đơn giá', 140, 'r'], ['Thành tiền', 150, 'r']] : [['#', 50, 'c'], ['Mã hàng', 260, 'l'], ['Tên chi tiết', 0, 'l'], ['SL', 80, 'r']];
+  const fixed = cols.reduce((a, c) => a + c[1], 0); cols.find(c => !c[1])[1] = W - 2 * P - fixed;
+  const xs = []; cols.reduce((x, c) => { xs.push(x); return x + c[1]; }, P);
+  const cell = (txt, i, yy, bold) => {
+    const [, w, al] = cols[i], pad = 10;
+    ctx.textAlign = al === 'r' ? 'right' : al === 'c' ? 'center' : 'left';
+    ctx.font = `${bold ? 700 : 400} 21px ${F}`;
+    const lines = i === 2 ? wrapText(ctx, txt, w - 2 * pad) : [String(txt)];
+    const x = al === 'r' ? xs[i] + w - pad : al === 'c' ? xs[i] + w / 2 : xs[i] + pad;
+    lines.forEach((l, j) => ctx.fillText(l, x, yy + 30 + j * 28));
+    return lines.length;
+  };
+  ctx.fillStyle = '#e3f0ff'; ctx.fillRect(P, y, W - 2 * P, 46);
+  ctx.fillStyle = '#0f172a'; cols.forEach((c, i) => cell(c[0], i, y + 1, true));
+  y += 46;
+  q.rows.forEach((r, n) => {
+    ctx.font = `400 21px ${F}`;
+    const h = 18 + 28 * wrapText(ctx, r.name, cols[2][1] - 20).length;
+    if (n % 2) { ctx.fillStyle = '#f8fafc'; ctx.fillRect(P, y, W - 2 * P, h); }
+    ctx.fillStyle = '#0f172a';
+    const vals = [n + 1, r.p.code, r.name, fmtQ(r.p.qty)];
+    if (q.perPart) { const sp = sellPrice(r.cost, q.cfg); vals.push(fmt(sp), sp == null ? '—' : fmt(sp * r.p.qty)); }
+    vals.forEach((v, i) => cell(v, i, y - 2));
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(P, y + h); ctx.lineTo(W - P, y + h); ctx.stroke();
+    y += h;
+  });
+  ctx.textAlign = 'left';
+  // tổng
+  y += 24;
+  ctx.fillStyle = ORANGE; ctx.fillRect(P, y, W - 2 * P, 84);
+  ctx.fillStyle = '#fff'; ctx.font = `700 28px ${F}`; ctx.fillText('GIÁ TRỌN BỘ', P + 24, y + 53);
+  ctx.textAlign = 'right'; ctx.font = `900 40px ${F}`; ctx.fillText(fmt(q.total) + ' đ', W - P - 24, y + 57); ctx.textAlign = 'left';
+  y += 84 + 20;
+  if (q.notes.length) {
+    ctx.fillStyle = '#475569'; ctx.font = `400 20px ${F}`;
+    for (const n of q.notes) for (const l of wrapText(ctx, n, W - 2 * P)) { ctx.fillText(l, P, y + 20); y += 28; }
+    y += 8;
+  }
+  ctx.fillStyle = '#94a3b8'; ctx.font = `400 18px ${F}`; ctx.fillText('Giá có thể thay đổi theo thời điểm. Liên hệ GKM để được tư vấn.', P, y + 22);
+  return y + 48;
+}
+async function quoteImage() {
+  const ck = curKit(); if (!ck) return;
+  const { k } = ck, c = computeKit(k), cfg = sellCfg('kit'), total = sellPrice(c.total, cfg);
+  if (total == null) { toast('Hãy đặt công thức giá bán (ô Tính giá bán phía dưới) trước khi tạo ảnh báo giá', 'bad', 4500); return; }
+  if (c.miss && !await confirmBox(`Có <b>${c.miss} món chưa có giá vốn</b> nên giá trọn bộ đang thiếu các món đó. Vẫn tạo ảnh báo giá?`, 'Vẫn tạo', false)) return;
+  const q = { k, rows: c.rows, cfg, total, perPart: ['*', '/', '%'].includes(cfg.op), notes: noticeText(diffLines(k.orig, k.parts), 'Bộ nhựa') };
+  const img = await loadImg(blobUrl(k.images[kdImgIdx] || k.images[0]));
+  const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 4000;
+  const H = drawQuote(cv.getContext('2d'), q, img);
+  cv.height = H; drawQuote(cv.getContext('2d'), q, img);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  const url = URL.createObjectURL(blob);
+  const fname = 'BaoGia_' + strip(k.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) + '.png';
+  const copy = async () => {
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Đã chép ảnh. Mở Zalo, bấm vào ô chat rồi nhấn Ctrl+V để gửi.', 'ok', 5000); return true; }
+    catch (e) { toast('Máy không cho chép ảnh tự động, hãy bấm Tải ảnh rồi gửi file.', 'bad', 5000); return false; }
+  };
+  const copied = await copy();
+  const go = await modal({ title: '🖼️ Ảnh báo giá', wide: true,
+    body: `<p class="small" style="margin-top:0">${copied ? '✅ <b>Đã chép ảnh.</b> Mở Zalo, bấm vào ô chat với khách rồi nhấn <kbd>Ctrl</kbd>+<kbd>V</kbd> để gửi.' : 'Bấm <b>Tải ảnh</b> rồi gửi file ảnh qua Zalo.'}</p>
+      <div style="max-height:62vh;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#f8fafc;text-align:center"><img src="${url}" style="max-width:100%;display:block;margin:0 auto"></div>`,
+    buttons: [{ text: '⬇️ Tải ảnh', value: 'dl' }, { text: '📋 Chép lại ảnh', value: 'copy' }, { text: 'Xong', cls: 'pri', value: null }] });
+  if (go === 'copy') await copy();
+  if (go === 'dl') { const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 /* ===== Mật khẩu hiện giá vốn (đặt ở Cài đặt, có thể nhiều mật khẩu) ===== */
 const costPws = () => (LS.get('costPw', []) || []).filter(Boolean);
 async function askCostPw() {
@@ -1678,6 +1773,7 @@ async function init() {
   let kt; $('#kitSearch').oninput = () => { clearTimeout(kt); kt = setTimeout(renderKits, 120); };
   $('#kitBack').onclick = closeKit;
   $('#kdPrint').onclick = printKitQuote;
+  $('#kdImgQuote').onclick = quoteImage;
   $$('[data-cust]').forEach(b => b.onclick = toggleCust);
   applyCust();
   renderAddRow($('#kdAdd'), kitLookup, async (code, qty) => {

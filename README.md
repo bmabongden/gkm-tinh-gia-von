@@ -34,3 +34,6 @@ Vào **⚙️ Cài đặt** → *Mật khẩu hiện giá vốn*, gõ mỗi dòn
 
 ## Biểu tượng trên màn hình
 Bấm đúp file `tao-bieu-tuong.bat` trong thư mục app. Màn hình Desktop sẽ có biểu tượng **GKM Tính giá vốn** (logo thẻ giá màu cam), từ sau bấm đúp vào đó để mở app.
+
+## Gửi báo giá qua Zalo
+Trong chi tiết bộ nhựa, bấm **🖼️ Ảnh báo giá (Zalo)**. App tạo một ảnh báo giá (không có giá vốn) và chép sẵn vào bộ nhớ: mở Zalo, bấm vào ô chat với khách rồi nhấn `Ctrl+V` để gửi. Có nút *Tải ảnh* nếu muốn lưu thành file. Cần đặt công thức giá bán trước, giống như khi in báo giá.
