@@ -16,11 +16,11 @@ App chạy offline hoàn toàn trên trình duyệt (Chrome / Edge / Cốc Cốc
 3. **🏍️ Bộ nhựa**: nhập file bộ nhựa, chọn *Bảng giá vốn bộ nhựa* và *Đối chiếu hàng đang bán*. Mã không có trong bảng hàng đang bán được gắn nhãn tím **Chưa mở bán**. Thêm/bớt/sửa SL được lưu lại, có khung thông báo và nút khôi phục bộ gốc.
    - Nút **🙈 Ẩn giá vốn**: chế độ cho khách xem, chỉ hiện giá bán.
    - Thanh **dòng xe** (SH Mode, Vision, Lead, Wave Alpha…) phía trên danh sách: bấm để lọc nhanh theo dòng xe.
-   - Nút **🔍 Mã thay thế** cạnh nhãn *Chưa mở bán*: gợi ý các mã đang bán có phần đầu giống nhất, bấm *Chọn* để thay.
+   - Nút **🔍 Mã thay thế** cạnh nhãn *Chưa mở bán*: gợi ý các mã đang bán có phần đầu giống nhất, bấm *Chọn* để thay. Nếu mã cũ còn ở bộ nhựa khác (kể cả phiên khác), app hỏi *Thay tất cả* hay *Chỉ món này*. Chọn *Thay tất cả* thì app nhớ lại và tự thay cả khi nhập file bộ nhựa mới sau này.
    - Nút **🖨️ In báo giá**: in hoặc *Lưu dưới dạng PDF* báo giá cho khách (ảnh xe, danh sách món, giá bán, không có giá vốn). Cần đặt công thức giá bán trước.
    - Hóa đơn: món bán thấp hơn giá vốn tô cam, có nhãn *Bán lỗ* và bộ lọc *Chỉ món lỗ*.
    - Ô *Thêm sản phẩm*: gõ vài chữ của mã hoặc tên là ra gợi ý, dùng ↑ ↓ Enter để chọn.
 4. **Tính giá bán theo công thức** (+ − × ÷ +%) nằm dưới hóa đơn và dưới mỗi bộ nhựa.
 
-## Đưa lên GitHub sau này
-Đẩy nguyên thư mục lên một repo và bật GitHub Pages. Khi chạy qua https, app tự lưu đệm để dùng offline và có thể "Cài đặt" như ứng dụng (PWA).
+## Cập nhật bản mới
+Bấm nút **🔄 Cập nhật** góc trên bên phải (cần có mạng). Nếu có bản mới, app hiện nội dung thay đổi và nút **Tải bản mới**. Giải nén file zip, rồi chép đè tất cả file vào **đúng thư mục app đang dùng**, sau đó mở lại `index.html`. Dữ liệu vẫn còn nguyên.

@@ -28,6 +28,36 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
+const APP_VERSION = '1.1';
+const REPO = 'bmabongden/gkm-tinh-gia-von';
+const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
+const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+async function checkUpdate() {
+  if (!navigator.onLine) return toast('Máy đang không có mạng. Cần mạng để kiểm tra bản mới.', 'bad', 4000);
+  busy('Đang kiểm tra bản mới…');
+  let rel;
+  try {
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 10000);
+    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { cache: 'no-store', signal: ac.signal }).finally(() => clearTimeout(to));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    rel = await r.json();
+  } catch (e) { busy(null); return toast('Không kiểm tra được bản mới' + (e.name === 'AbortError' ? ' (mạng chậm hoặc bị chặn)' : ': ' + e.message) + '. Thử lại sau.', 'bad', 4500); }
+  busy(null);
+  const tag = rel.tag_name || '';
+  if (!newer(tag, APP_VERSION)) return toast(`Đang dùng bản mới nhất (v${APP_VERSION}).`, 'ok', 3500);
+  const zip = `https://github.com/${REPO}/archive/refs/tags/${encodeURIComponent(tag)}.zip`;
+  const body = `<p style="margin-top:0">Có bản mới <b>${esc(tag)}</b> (đang dùng v${APP_VERSION}).</p>
+    ${rel.body ? `<div class="small" style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;max-height:30vh;overflow:auto">${esc(rel.body)}</div>` : ''}
+    <p><b>Cách cập nhật mà không mất dữ liệu:</b></p>
+    <ol style="margin-top:0;padding-left:20px">
+      <li>Bấm <b>Tải bản mới</b> để tải file zip.</li>
+      <li>Giải nén, mở thư mục bên trong, chọn tất cả file rồi <b>chép đè vào đúng thư mục app đang dùng</b> (chọn “Thay thế” khi máy hỏi).</li>
+      <li>Đóng tab app rồi mở lại <code>index.html</code> như mọi khi. Bảng giá, bộ nhựa, ảnh vẫn còn nguyên.</li>
+    </ol>
+    <p class="small muted" style="margin-bottom:0">Đừng mở app từ thư mục mới giải nén, vì trình duyệt sẽ coi là app khác và không thấy dữ liệu cũ.</p>`;
+  const go = await modal({ title: '🔄 Cập nhật app', body, buttons: [{ text: 'Để sau', value: false }, { text: '⬇️ Tải bản mới', value: true, cls: 'pri' }] });
+  if (go) window.open(zip, '_blank');
+}
 const LS = {
   get(k, d) { try { const v = localStorage.getItem('gkm.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('gkm.' + k, JSON.stringify(v)); } catch { } }
@@ -952,12 +982,14 @@ async function importKits2(file, wb, r) {
   }
   const good = kits.filter(k => k.parts.length);
   if (!good.length) return toast('Không đọc được bộ nhựa nào (thiếu mã hàng?)', 'bad');
+  good.forEach(ensureKit);
+  const nAlt = applyAltMap(good);
   const sess = { id: uid(), name: r.name, fileName: file.name, createdAt: Date.now(), kits: good };
   try { await DB.put('kits', sess); } catch (e) { return toast('Lỗi lưu: ' + e.message, 'bad'); }
   S.kits.push(sess);
   good.forEach(ensureKit);
   $('#kitSessSel').value = sess.id;
-  toast(`Đã lưu ${good.length} bộ nhựa${nImg ? `, ${nImg} ảnh` : ''} vào phiên “${sess.name}”`, 'ok', 4000);
+  toast(`Đã lưu ${good.length} bộ nhựa${nImg ? `, ${nImg} ảnh` : ''} vào phiên “${sess.name}”${nAlt ? `, tự thay ${nAlt} mã theo mã thay thế đã chọn trước` : ''}`, 'ok', 5000);
   renderKits();
 }
 
@@ -1184,14 +1216,44 @@ async function pickAltCode(s, k, i) {
       return `<tr><td class="code">${esc(it.code)}</td><td>${esc(it.name || '')}</td><td class="n">${fmt(cost)}</td><td><button class="btn sm pri" data-j="${j}">Chọn</button></td></tr>`;
     }).join('')}</tbody>`;
     $$('[data-j]', body).forEach(b => b.onclick = async () => {
-      const it = list[+b.dataset.j];
-      part.code = it.code; part.name = it.name || part.name; part.cost = null; part.manual = null;
-      await saveKit(s); $('.modal-bg [data-x]').click(); renderKitDetail(); toast(`Đã thay bằng mã ${it.code}`, 'ok');
+      const it = list[+b.dataset.j], old = part.code;
+      $('.modal-bg [data-x]').click();
+      await applyAltCode(old, it, s, k, i);
     });
   };
   draw(first.list);
   let t; $('[data-q]', body).oninput = e => { clearTimeout(t); t = setTimeout(() => draw(searchItems([kitSaleSource()], e.target.value, 30)), 150); };
   await modal({ title: '🔍 Tìm mã thay thế', body, wide: true, buttons: [{ text: 'Đóng', value: null }] });
+}
+/* Mã thay thế dùng chung: thay trong mọi bộ nhựa của mọi phiên, và nhớ lại để áp cho file bộ nhựa nhập sau */
+function altMap() { return LS.get('altMap', {}); }
+function replacePart(p, it) { p.code = it.code; p.name = it.name || p.name; p.cost = null; p.manual = null; }
+async function applyAltCode(oldCode, it, s, k, i) {
+  const lo = looseCode(oldCode), hits = [];
+  S.kits.forEach(ss => ss.kits.forEach(kk => kk.parts.forEach((p, j) => { if (looseCode(p.code) === lo && !(ss === s && kk === k && j === i)) hits.push({ ss, kk, p }); })));
+  const nKit = new Set(hits.map(h => h.kk).concat([k])).size - 1, nSess = new Set(hits.map(h => h.ss)).size;
+  let all = true;
+  if (hits.length) {
+    all = await modal({ title: 'Thay mã ở đâu?', body: `<p style="margin-top:0">Mã <b class="code">${esc(oldCode)}</b> còn xuất hiện ${hits.length} lần trong ${nKit ? `<b>${nKit} bộ nhựa khác</b>` : 'chính bộ này'} (${nSess} phiên). Thay bằng <b class="code">${esc(it.code)}</b>:</p>`,
+      buttons: [{ text: 'Chỉ món này', value: false }, { text: `Thay tất cả (khuyên dùng)`, value: true, cls: 'pri' }] });
+    if (all == null) return;
+  }
+  ensureKit(k); replacePart(k.parts[i], it);
+  const changed = new Set([s]);
+  if (all) {
+    hits.forEach(h => { ensureKit(h.kk); replacePart(h.p, it); changed.add(h.ss); });
+    const m = altMap(); m[lo] = { code: it.code, name: it.name || '' }; LS.set('altMap', m);
+  }
+  for (const ss of changed) await saveKit(ss);
+  renderKitDetail();
+  toast(all ? `Đã thay ${oldCode} → ${it.code}${hits.length ? ` ở ${hits.length + 1} chỗ, trong ${nKit + 1} bộ nhựa` : ''}. Lần nhập bộ nhựa sau cũng tự thay.` : `Đã thay bằng mã ${it.code}`, 'ok', 5000);
+}
+/** Áp các mã thay thế đã nhớ cho bộ nhựa mới nhập. Trả về số món đã thay. */
+function applyAltMap(kits) {
+  const m = altMap(); let n = 0;
+  if (!Object.keys(m).length) return 0;
+  kits.forEach(k => k.parts.forEach(p => { const r = m[looseCode(p.code)]; if (r && looseCode(r.code) !== looseCode(p.code)) { replacePart(p, r); n++; } }));
+  return n;
 }
 function kitLookup(code) {
   const src = kitPriceSource();
@@ -1313,6 +1375,8 @@ async function init() {
   let lt; $('#lookQ').oninput = () => { clearTimeout(lt); lt = setTimeout(renderLookup, 120); };
 
   // bộ nhựa
+  $('#updBtn').onclick = checkUpdate;
+  $('#updBtn').title = `Đang dùng v${APP_VERSION}. Bấm để kiểm tra bản mới.`;
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };
   S.kitLine = LS.get('kitLine', '');
   $('#kitSessSel').onchange = renderKits;
