@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -679,7 +679,6 @@ function renderPriceList(kind, el) {
         ${p.id !== def ? '<button class="btn sm" data-a="def">⭐ Đặt mặc định</button>' : ''}
         <button class="btn sm" data-a="upd" title="Thay dữ liệu bằng file mới, giữ tên phiên">🔄 Cập nhật</button>
         <button class="btn sm" data-a="ren" title="Đổi tên">✏️</button>
-        <button class="btn sm" data-a="mv" title="Chuyển sang nhóm ${kind === 'inv' ? 'bộ nhựa' : 'hóa đơn'}">⇄</button>
         <button class="btn sm bad" data-a="del" title="Xóa">🗑️</button>
       </div>
     </div>`).join('');
@@ -706,26 +705,7 @@ function renderPriceList(kind, el) {
   });
 }
 function renderPrices() {
-  renderPriceList('inv', $('#priceSessInv'));
   renderPriceList('kit', $('#priceSessKit'));
-  const ls = $('#lookSess'), cur = ls.value || defaultPriceId('inv');
-  const grp = k => S.prices.filter(p => sessKind(p) === k).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-  ls.innerHTML = S.prices.length ? `<optgroup label="Hóa đơn (hàng đang bán)">${grp('inv')}</optgroup><optgroup label="Bộ nhựa">${grp('kit')}</optgroup>` : '<option value="">(chưa có bảng giá)</option>';
-  if (S.prices.some(p => p.id === cur)) ls.value = cur;
-  renderLookup();
-}
-function renderLookup() {
-  const ix = priceIndex($('#lookSess').value);
-  const q = strip($('#lookQ').value), m = makeMatcher($('#lookQ').value);
-  const t = $('#lookTable');
-  if (!ix) { t.innerHTML = ''; $('#lookInfo').textContent = ''; return; }
-  const items = ix.sess.items;
-  const res = [];
-  for (const it of items) {
-    if (!m || m(it.name, [it.code])) { res.push(it); if (res.length >= 200) break; }
-  }
-  $('#lookInfo').textContent = q ? `${res.length >= 200 ? '200+' : res.length} kết quả` : `${items.length.toLocaleString('vi-VN')} sản phẩm (hiện 200 đầu)`;
-  t.innerHTML = `<thead><tr><th>Mã hàng</th><th>Tên hàng</th><th class="n">Giá vốn</th><th class="n">Giá bán</th></tr></thead><tbody>${res.map(it => `<tr><td class="code">${esc(it.code)}</td><td>${esc(it.name)}</td><td class="n">${it.cost == null ? '<span class="tag bad">trống</span>' : fmt(it.cost)}</td><td class="n">${it.sell == null ? '—' : fmt(it.sell)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Không tìm thấy</td></tr>'}</tbody>`;
 }
 
 /* ================= THÊM / BỚT SẢN PHẨM (dùng chung) ================= */
@@ -798,7 +778,7 @@ function attachSuggest(input, searchFn, onPick) {
     if (box.classList.contains('hide')) return;
     if (e.key === 'ArrowDown') { hi = Math.min(items.length - 1, hi + 1); draw(); e.preventDefault(); }
     else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); draw(); e.preventDefault(); }
-    else if (e.key === 'Enter' && hi >= 0) { onPick(items[hi]); close(); e.preventDefault(); e.stopImmediatePropagation(); }
+    else if (e.key === 'Enter' && items.length) { onPick(items[hi >= 0 ? hi : 0]); close(); e.preventDefault(); e.stopImmediatePropagation(); }
     else if (e.key === 'Escape') { close(); e.stopPropagation(); }
   });
 }
@@ -852,7 +832,7 @@ async function loadInvoice(sheets, fileName) {
   toast(`Đã đọc ${lines.length} dòng hóa đơn`, 'ok');
 }
 function computeInvoice() {
-  const ix = priceIndex($('#invPriceSel').value);
+  const ix = priceIndex(defaultPriceId('inv'));
   let total = 0, qty = 0, miss = 0, sellTotal = 0, sellMiss = 0, profitSell = 0, profitSkip = 0;
   const profitAcc = { v: 0 };
   const rows = S.invoice.lines.map((l, i) => {
@@ -881,6 +861,8 @@ function renderInvoice() {
   $('#invFileName').textContent = has ? '📄 ' + S.invoice.fileName : '';
   if (!has) return;
   if (!S.invoice.orig) { S.invoice.lines.forEach(l => l.id = l.id || uid()); S.invoice.orig = S.invoice.lines.map(l => ({ id: l.id, code: l.code, qty: l.qty })); }
+  // đơn tự tạo: không có bản gốc để so, không báo "đã chỉnh sửa"
+  if (S.invoice.manual) { S.invoice.orig = S.invoice.lines.map(l => ({ id: l.id, code: l.code, qty: l.qty })); S.invoice.origFull = JSON.parse(JSON.stringify(S.invoice.lines)); }
   const c = computeInvoice();
   $('#sLines').textContent = c.rows.length;
   $('#sQty').textContent = 'Tổng SL: ' + fmtQ(c.qty);
@@ -1057,7 +1039,7 @@ function ensureKit(k) {
   k.origFull = k.parts.map(p => ({ ...p }));
 }
 function kitPriceSource() { return $('#kitPriceSel').value; }
-function kitSaleSource() { return $('#kitSaleSel').value; }
+function kitSaleSource() { return defaultPriceId('inv') || ''; }
 function computeKit(kit) {
   ensureKit(kit);
   const src = kitPriceSource();
@@ -1139,9 +1121,6 @@ function renderKitSelects() {
   ps.innerHTML = kitTables.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('') + `<option value="file">Giá có sẵn trong file bộ nhựa</option>`;
   ps.value = [...ps.options].some(o => o.value === pcur) ? pcur : (kitTables.length ? (defaultPriceId('kit') || kitTables[0].id) : 'file');
   $('#kitNoPrice').classList.toggle('hide', !!kitTables.length);
-  const sale = $('#kitSaleSel'), scur = LS.get('kitSale') ?? defaultPriceId('inv') ?? '';
-  sale.innerHTML = `<option value="">Không đối chiếu</option>` + S.prices.filter(p => sessKind(p) === 'inv').map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-  sale.value = [...sale.options].some(o => o.value === scur) ? scur : (defaultPriceId('inv') || '');
 }
 function renderKits() {
   renderKitSelects();
@@ -1195,8 +1174,8 @@ function renderKitDetail() {
   const ck = curKit(); if (!ck || !ck.k) { closeKit(); return; }
   const { s, k } = ck;
   const c = computeKit(k);
-  const src = $('#kitPriceSel').selectedOptions[0], sale = $('#kitSaleSel').selectedOptions[0];
-  $('#kdSess').textContent = `Phiên: ${s.name} · Giá vốn: ${src ? src.text : ''}${kitSaleSource() ? ' · Đối chiếu hàng đang bán: ' + sale.text : ''}${loadStock() ? ` · Tồn kho lúc ${fmtTime(loadStock().at)}${c.short ? ` (${c.short} món thiếu hàng)` : ' (đủ hàng)'}` : ''}`;
+  const src = $('#kitPriceSel').selectedOptions[0];
+  $('#kdSess').textContent = `Phiên: ${s.name} · Giá vốn: ${src ? src.text : ''}${kitSaleSource() ? ' · Đối chiếu hàng đang bán: KiotViet' : ''}${loadStock() ? ` · Tồn kho lúc ${fmtTime(loadStock().at)}${c.short ? ` (${c.short} món thiếu hàng)` : ' (đủ hàng)'}` : ''}`;
   $('#kdName').textContent = k.name;
   $('#kdLine').textContent = '🏍️ ' + (k.line || kitLine(k.name));
   $('#kdCount').textContent = k.parts.length;
@@ -1362,10 +1341,11 @@ async function openSettings() {
     <div style="font-weight:700;margin-bottom:8px">🔒 Mật khẩu hiện giá vốn</div>
     <div data-pwbox></div>
     <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0 10px">
-    <div class="small muted">Phiên bản app: v${APP_VERSION}</div>`;
+    <div class="row" style="justify-content:space-between"><div><div style="font-weight:700">🔄 Cập nhật app</div><div class="small muted">Đang dùng v${APP_VERSION}</div></div><button class="btn" data-upd>Kiểm tra bản mới</button></div>`;
   await modal({
     title: '⚙️ Cài đặt', body, buttons: [{ text: 'Xong', cls: 'pri', value: true }],
     onOpen: async mb => {
+      $('[data-upd]', mb).onclick = () => { $('[data-x]', mb.closest('.modal')).click(); checkUpdate(); };
       const box = $('[data-pwbox]', mb);
       const drawPw = () => {
         if (LS.get('cust', false) && costPws().length) {
@@ -1481,9 +1461,9 @@ async function loadStockFile(file) {
 }
 function renderStockBtn() {
   const st = loadStock();
-  const html = st ? `🔄 Cập nhật bảng giá &amp; tồn kho KiotViet <span style="font-weight:400;opacity:.75">(đang là lúc ${fmtTime(st.at)})</span>` : '📦 Lấy bảng giá &amp; tồn kho KiotViet';
+  const html = st ? `🔄 Cập nhật KiotViet <span style="font-weight:400;opacity:.8">(lúc ${fmtTime(st.at)})</span>` : '📦 Lấy bảng giá &amp; tồn kho KiotViet';
   const title = st ? `Bảng giá và tồn kho đang dùng lấy lúc ${fmtTime(st.at)}. Bấm để lấy lại mới nhất từ KiotViet.` : 'Lấy bảng giá (giá vốn, giá bán, tên hàng) và tồn kho mới nhất từ KiotViet';
-  $$('#stockBtn, #kvPriceBtn').forEach(x => { x.innerHTML = html; x.title = title; });
+  $$('#kvBtn').forEach(x => { x.innerHTML = html; x.title = title; });
 }
 const stockCell = r => !loadStock() ? '' : !r.sold ? `<span class="tag out" title="Mã này chưa mở bán">${r.stock > 0 ? fmtQ(r.stock) + ' · ' : ''}Chưa bán</span>` : r.stock == null ? '<span class="tag out" title="Không thấy mã này trong KiotViet">Không có</span>' : r.stock <= 0 ? '<span class="tag out">Hết</span>' : r.stock < r.p.qty ? `<span class="tag out">${fmtQ(r.stock)}</span>` : fmtQ(r.stock);
 function kitLookup(code) {
@@ -1701,11 +1681,10 @@ async function addKitImages(files) {
 
 /* ================= KHỞI ĐỘNG ================= */
 function renderPriceSelects() {
-  const sel = $('#invPriceSel'), cur = sel.value || defaultPriceId('inv');
-  const list = S.prices.filter(p => sessKind(p) === 'inv');
-  sel.innerHTML = list.map(p => `<option value="${p.id}">${esc(p.name)} (${p.items.length.toLocaleString('vi-VN')})</option>`).join('') || '<option value="">(chưa có)</option>';
-  sel.value = list.some(p => p.id === cur) ? cur : (defaultPriceId('inv') || '');
-  $('#invNoPrice').classList.toggle('hide', !!list.length);
+  const ps = S.prices.find(p => p.id === defaultPriceId('inv'));
+  $('#invNoPrice').classList.toggle('hide', !!ps);
+  const at = ps ? (ps.updatedAt || ps.createdAt) : null;
+  $('#invPriceInfo').innerHTML = ps ? `💾 Giá vốn KiotViet cập nhật lúc <b>${fmtTime(at)}</b> · ${ps.items.length.toLocaleString('vi-VN')} sản phẩm` : '';
 }
 function refreshAll() {
   renderPriceSelects(); renderPrices(); renderInvoice();
@@ -1748,7 +1727,6 @@ async function init() {
     if (t && t.trim()) loadInvoice(textToSheets(t), 'Dữ liệu dán');
   };
   $('#invClear').onclick = () => { S.invoice = null; try { sessionStorage.removeItem('gkm.invoice'); } catch { } renderInvoice(); };
-  $('#invPriceSel').onchange = () => renderInvoice();
   $$('#invFilter button').forEach(b => b.onclick = () => { S.invFilter = b.dataset.f; renderInvoice(); });
   $('#invSearch').oninput = () => drawInvTable(computeInvoice());
   $('#invExport').onclick = exportInvoice;
@@ -1759,11 +1737,17 @@ async function init() {
     try { await navigator.clipboard.writeText(text); toast(`Đã chép ${codes.length} mã thiếu`, 'ok'); }
     catch { modal({ title: 'Mã thiếu', body: `<textarea rows="10" style="width:100%">${esc(text)}</textarea>`, buttons: [{ text: 'Đóng', cls: 'pri' }] }); }
   };
-  renderAddRow($('#invAdd'), code => lookup(priceIndex($('#invPriceSel').value), code), (code, qty) => {
-    const it = lookup(priceIndex($('#invPriceSel').value), code);
-    S.invoice.lines.push({ id: uid(), code: it ? it.code : code, name: it ? it.name : '', qty, sell: null, manual: null });
-    saveInvoice(); renderInvoice(); toast('Đã thêm ' + code, 'ok');
-  }, q => searchItems([$('#invPriceSel').value], q));
+  const invAddItem = (code, qty) => {
+    const it = lookup(priceIndex(defaultPriceId('inv')), code);
+    if (!S.invoice) S.invoice = { fileName: 'Đơn tạo tay', manual: true, lines: [], orig: [], origFull: [] };
+    const ex = S.invoice.lines.find(l => looseCode(l.code) === looseCode(it ? it.code : code));
+    if (ex) ex.qty += qty; else S.invoice.lines.push({ id: uid(), code: it ? it.code : code, name: it ? it.name : '', qty, sell: null, manual: null });
+    saveInvoice(); renderInvoice(); toast(`Đã thêm ${it ? it.code : code} × ${fmtQ(qty)}`, 'ok');
+  };
+  const invLookup = code => lookup(priceIndex(defaultPriceId('inv')), code), invSearch = q => searchItems([defaultPriceId('inv')], q);
+  renderAddRow($('#invAdd'), invLookup, invAddItem, invSearch);
+  renderAddRow($('#invQuickAdd'), invLookup, invAddItem, invSearch);
+  $('#invQuickAdd b').textContent = '🔍 Tìm sản phẩm thêm vào đơn';
   $('#invReset').onclick = async () => {
     if (!S.invoice || !S.invoice.origFull) return toast('Không còn bản gốc, hãy kéo thả lại file hóa đơn', 'bad');
     if (!await confirmBox('Bỏ hết các thay đổi (thêm / bớt / đổi số lượng) và quay về hóa đơn gốc?', 'Khôi phục', false)) return;
@@ -1772,24 +1756,19 @@ async function init() {
 
   // bảng giá
   $$('[data-import]').forEach(b => b.onclick = async () => { const f = await pickFile(); if (f) importPrices(f, null, b.dataset.import); });
-  $('#lookSess').onchange = renderLookup;
-  let lt; $('#lookQ').oninput = () => { clearTimeout(lt); lt = setTimeout(renderLookup, 120); };
 
   // bộ nhựa
-  $('#updBtn').onclick = checkUpdate;
   $('#resetBtn').onclick = resetWork;
   $('#setBtn').onclick = openSettings;
   const toTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
   $('.brand').onclick = toTop; $('#topBtn').onclick = toTop;
   const onScroll = () => $('#topBtn').classList.toggle('show', window.scrollY > 400);
   window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
-  $('#stockBtn').onclick = fetchStock; $('#kvPriceBtn').onclick = fetchStock; renderStockBtn();
-  $('#updBtn').title = `Đang dùng v${APP_VERSION}. Bấm để kiểm tra bản mới.`;
+  $('#kvBtn').onclick = fetchStock; renderStockBtn();
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };
   S.kitLine = LS.get('kitLine', '');
   $('#kitSessSel').onchange = renderKits;
   $('#kitPriceSel').onchange = () => { LS.set('kitPrice', $('#kitPriceSel').value); S.kitView ? renderKitDetail() : renderKits(); };
-  $('#kitSaleSel').onchange = () => { LS.set('kitSale', $('#kitSaleSel').value); S.kitView ? renderKitDetail() : renderKits(); };
   let kt; $('#kitSearch').oninput = () => { clearTimeout(kt); kt = setTimeout(renderKits, 120); };
   $('#kitBack').onclick = closeKit;
   $('#kdPrint').onclick = printKitQuote;

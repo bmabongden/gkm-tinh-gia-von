@@ -108,7 +108,6 @@ input.cost{width:120px;text-align:right;padding:4px 8px}
 .modal .mf{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:12px 0}
 .req{color:var(--bad)}
-#stockBtn{white-space:normal;max-width:100%;text-align:left}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;max-width:calc(100vw - 24px)}
 #toast div{background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);animation:tin .2s}
 #toast div.bad{background:var(--bad)}
@@ -178,6 +177,7 @@ tr.loss td{background:#fff1e6}
 .linehdr:first-child{margin-top:0}
 .updbtn{margin-left:auto;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px;cursor:pointer}
 .updbtn:hover{background:rgba(255,255,255,.26)}
+.kvbtn{background:#ff8f00;border-color:#ffb74d}.kvbtn:hover{background:#ffa000}
 kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
 </style>
 </head>
@@ -188,10 +188,9 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
     <nav id="nav">
       <button data-tab="invoice" class="on">🧾 Hóa đơn</button>
       <button data-tab="kits">🏍️ Bộ nhựa</button>
-      <button data-tab="prices">📦 Bảng giá vốn</button>
     </nav>
     <button id="resetBtn" class="updbtn" title="Đưa bộ nhựa về bản gốc và xóa hóa đơn đang làm (giữ bảng giá, bộ nhựa gốc)">🧹 Làm mới</button>
-    <button id="updBtn" class="updbtn" style="margin-left:0">🔄 Cập nhật</button>
+    <button id="kvBtn" class="updbtn kvbtn" style="margin-left:0">📦 Lấy bảng giá &amp; tồn kho KiotViet</button>
     <button id="setBtn" class="updbtn" style="margin-left:0" title="Cài đặt: cửa hàng KiotViet, đăng nhập, đổi tài khoản">⚙️ Cài đặt</button>
   </div>
 </header>
@@ -203,17 +202,16 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
   <div class="card">
     <div class="row" style="justify-content:space-between">
       <h2 style="margin:0">Tính giá vốn hóa đơn</h2>
-      <label class="row small muted" style="gap:6px">Bảng giá vốn hóa đơn:
-        <select id="invPriceSel" style="min-width:220px"></select>
-      </label>
+      <span class="small muted" id="invPriceInfo"></span>
     </div>
     <div id="invNoPrice" class="hide" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn)">
-      Chưa có bảng giá vốn hóa đơn (hàng đang bán). Vào tab <b>📦 Bảng giá vốn</b>, bấm <b>📦 Lấy bảng giá &amp; tồn kho KiotViet</b>.
+      Chưa có bảng giá vốn. Bấm nút <b>📦 Lấy bảng giá &amp; tồn kho KiotViet</b> màu cam ở trên cùng.
     </div>
     <div class="drop" id="invDrop" style="margin-top:12px">
       <b>📂 Kéo thả file hóa đơn vào đây</b> hoặc bấm để chọn file<br>
       <span class="small">Excel (.xlsx, .xls) hoặc CSV. Cần cột <b>Mã hàng</b> và <b>Số lượng</b>.</span>
     </div>
+    <div id="invQuickAdd" style="margin-top:12px"></div>
     <div class="row" style="margin-top:10px">
       <button class="btn" id="invPaste">📋 Dán từ Excel</button>
       <button class="btn bad hide" id="invClear">🗑️ Xóa hóa đơn</button>
@@ -245,7 +243,7 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
       </div>
       <div class="tblwrap"><table id="invTable"></table></div>
       <p class="small muted" style="margin:8px 0 0">Giá bán lấy từ cột giá bán của hóa đơn; nếu hóa đơn không có thì lấy theo bảng giá. Dòng <span class="tag bad">đỏ</span> là mã không có trong bảng giá: có thể gõ giá vốn tay (dòng chuyển <span class="tag warn">vàng</span>). Sửa số lượng ngay trong ô SL, bấm ✕ để bớt món.</p>
-      <div id="invAdd"></div>
+      <div id="invAdd" class="hide"></div>
       <div id="invNotice"></div>
       <button class="btn sm hide" id="invReset" style="margin-top:8px">↺ Khôi phục hóa đơn gốc</button>
     </div>
@@ -259,7 +257,7 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
     <div class="card">
       <div class="row" style="justify-content:space-between">
         <h2 style="margin:0">Giá vốn bộ nhựa</h2>
-        <div class="row"><button class="btn custbtn" data-cust></button><button class="btn" id="stockBtn">📦 Lấy tồn kho</button><button class="btn pri costcol" id="kitImport">➕ Nhập bảng bộ nhựa</button></div>
+        <div class="row"><button class="btn custbtn" data-cust></button><button class="btn pri costcol" id="kitImport">➕ Nhập bảng bộ nhựa</button></div>
       </div>
       <div class="row" style="margin-top:12px">
         <input type="search" id="kitSearch" placeholder="🔍 Tìm tên xe / bộ nhựa / mã…" class="grow" style="max-width:360px">
@@ -267,19 +265,24 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
         <label class="row small muted costcol" style="gap:6px">Bảng giá vốn bộ nhựa:
           <select id="kitPriceSel"></select>
         </label>
-        <label class="row small muted costcol" style="gap:6px" title="Mã không có trong bảng này sẽ báo Chưa mở bán">Đối chiếu hàng đang bán:
-          <select id="kitSaleSel"></select>
-        </label>
       </div>
       <div class="chips" id="kitLines"></div>
       <div id="kitNoPrice" class="hide costcol" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn)">
-        Chưa có bảng giá vốn bộ nhựa. Vào tab <b>📦 Bảng giá vốn</b>, mục <b>Bảng giá vốn bộ nhựa</b> để nhập (hoặc bấm ⇄ để chuyển một bảng có sẵn sang).
+        Chưa có bảng giá vốn bộ nhựa. Kéo xuống cuối trang, mục <b>Bảng giá vốn bộ nhựa</b> để nhập.
       </div>
     </div>
     <div class="kits" id="kitGrid"></div>
     <div class="card costcol" style="margin-top:16px">
       <h2>Các phiên bộ nhựa đã lưu</h2>
       <div class="sess" id="kitSessList"></div>
+    </div>
+    <div class="card costcol" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">🏍️ Bảng giá vốn bộ nhựa</h2>
+        <button class="btn pri" data-import="kit">➕ Nhập bảng giá vốn bộ nhựa</button>
+      </div>
+      <p class="small muted">Bảng giá Honda dùng để tính giá vốn các bộ nhựa. Phiên viền xanh là phiên đang dùng.</p>
+      <div class="sess" id="priceSessKit"></div>
     </div>
   </div>
 
@@ -325,34 +328,7 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
   </div>
 </section>
 
-<!-- ================= BẢNG GIÁ ================= -->
-<section class="tab" id="tab-prices">
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">🧾 Bảng giá vốn hóa đơn (hàng đang bán)</h2>
-      <div class="row"><button class="btn pri" id="kvPriceBtn">📦 Lấy bảng giá &amp; tồn kho KiotViet</button><button class="btn" data-import="inv" title="Nhập tay từ file Excel">➕ Nhập từ file</button></div>
-    </div>
-    <p class="small muted">Lấy thẳng từ KiotViet (giá vốn, giá bán, tên hàng, tồn kho) bằng nút bên phải: bảng giá mặc định được thay bằng dữ liệu mới nhất. Dùng để tính giá vốn hóa đơn, lấy tên hàng cho bộ nhựa và đối chiếu mã nào <b>chưa mở bán</b>. Phiên viền xanh là phiên mặc định.</p>
-    <div class="sess" id="priceSessInv"></div>
-  </div>
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">🏍️ Bảng giá vốn bộ nhựa</h2>
-      <button class="btn pri" data-import="kit">➕ Nhập bảng giá vốn bộ nhựa</button>
-    </div>
-    <p class="small muted">Chạy riêng với hóa đơn: chỉ dùng để tính giá vốn các bộ nhựa. Nút ⇄ chuyển một phiên sang nhóm kia.</p>
-    <div class="sess" id="priceSessKit"></div>
-  </div>
-  <div class="card">
-    <h2>Tra nhanh giá vốn</h2>
-    <div class="row">
-      <select id="lookSess"></select>
-      <input type="search" id="lookQ" class="grow" placeholder="🔍 Gõ mã hàng hoặc tên…" style="max-width:420px">
-      <span class="small muted" id="lookInfo"></span>
-    </div>
-    <div class="tblwrap" style="margin-top:10px;max-height:60vh"><table id="lookTable"></table></div>
-  </div>
-</section>
+
 
 </main>
 

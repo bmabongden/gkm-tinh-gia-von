@@ -4,7 +4,7 @@
 # - Chỉ nhận lệnh từ chính máy này (127.0.0.1), không mở ra mạng ngoài.
 # - Không lưu mật khẩu: anh tự đăng nhập KiotViet một lần trong cửa sổ riêng, Edge riêng tự nhớ.
 $ErrorActionPreference = 'Stop'
-$Version = '1.1'
+$Version = '1.2'
 $Port = 47321
 $DebugPort = 9333
 $Base = Join-Path $env:LOCALAPPDATA 'GKM-TonKho'
@@ -47,7 +47,8 @@ function Ensure-Browser([bool]$visible, [string]$url) {
   if ($visible) { $a += '--window-size=1200,860' } else { $a += '--window-position=-2400,-2400'; $a += '--window-size=1280,860' }
   $a += $url
   if ($visible) { Log 'Mở cửa sổ đăng nhập KiotViet' } else { Log 'Bật Edge riêng (ẩn)' }
-  Start-Process -FilePath $exe -ArgumentList $a | Out-Null
+  if ($visible) { Start-Process -FilePath $exe -ArgumentList $a | Out-Null }
+  else { Start-Process -FilePath $exe -ArgumentList $a -WindowStyle Minimized | Out-Null }
   for ($i = 0; $i -lt 40; $i++) { Start-Sleep -Milliseconds 500; $info = Get-DebugInfo; if ($info) { return $info } }
   throw 'Edge riêng không bật được'
 }
@@ -156,7 +157,12 @@ function Export-Products([string]$shop) {
     Get-ChildItem -Path $DlDir -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
     $script:dlNames = @{}; $script:doneGuid = $null; $script:dlFail = $null
     Cdp-Send 'Browser.setDownloadBehavior' @{ behavior = 'allowAndName'; downloadPath = $DlDir; eventsEnabled = $true } $null | Out-Null
-    $targetId = (Cdp-Send 'Target.createTarget' @{ url = (Products-Url $shop) } $null).targetId
+    $targetId = (Cdp-Send 'Target.createTarget' @{ url = (Products-Url $shop); background = $true } $null).targetId
+    # Thu nhỏ cửa sổ xuống thanh tác vụ để không chèn lên màn hình (bấm biểu tượng Edge là hiện lại)
+    try {
+      $win = Cdp-Send 'Browser.getWindowForTarget' @{ targetId = $targetId } $null
+      if ($win.windowId) { Cdp-Send 'Browser.setWindowBounds' @{ windowId = $win.windowId; bounds = @{ windowState = 'minimized' } } $null | Out-Null }
+    } catch { Log ('Không thu nhỏ được cửa sổ: ' + $_.Exception.Message) }
     $sid = (Cdp-Send 'Target.attachToTarget' @{ targetId = $targetId; flatten = $true } $null).sessionId
     $st = 'loading'
     for ($i = 0; $i -lt 60 -and $st -eq 'loading'; $i++) {
