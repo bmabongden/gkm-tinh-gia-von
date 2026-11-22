@@ -40,3 +40,8 @@ Trong chi tiết bộ nhựa, bấm **🖼️ Ảnh phiếu nhặt (Zalo)**. App
 
 ## In phiếu nhặt hàng
 Trong chi tiết bộ nhựa, bấm **🖨️ In phiếu nhặt hàng** để in danh sách mã đi nhặt nhựa trong kho: ô tích, mã hàng chữ to, tên, số lượng, tồn kho (nếu đã lấy) và cột ghi chú. Phiếu không có giá. Món thiếu hàng hoặc chưa mở bán được tô xám để dễ thấy.
+
+## Bảng giá & tồn kho KiotViet (một nút)
+Nút **📦 Lấy bảng giá & tồn kho KiotViet** (ở tab Bộ nhựa và tab Bảng giá vốn) tự vào KiotViet xuất danh sách hàng hóa, rồi cùng lúc: cập nhật tồn kho, và **thay bảng giá vốn hóa đơn mặc định** bằng giá vốn, giá bán, tên hàng mới nhất. Không cần nhập tay bảng giá hóa đơn nữa. Anh chỉ tự nhập **bảng bộ nhựa** và **bảng giá Honda** (bảng giá vốn bộ nhựa).
+
+Tên chi tiết trong bộ nhựa lấy theo tên hàng trên KiotViet; mã nào KiotViet không có mới dùng tên trong file bộ nhựa.

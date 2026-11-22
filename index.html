@@ -208,7 +208,7 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
       </label>
     </div>
     <div id="invNoPrice" class="hide" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn)">
-      Chưa có bảng giá vốn hóa đơn (hàng đang bán). Vào tab <b>📦 Bảng giá vốn</b> để nhập bảng sản phẩm trước.
+      Chưa có bảng giá vốn hóa đơn (hàng đang bán). Vào tab <b>📦 Bảng giá vốn</b>, bấm <b>📦 Lấy bảng giá &amp; tồn kho KiotViet</b>.
     </div>
     <div class="drop" id="invDrop" style="margin-top:12px">
       <b>📂 Kéo thả file hóa đơn vào đây</b> hoặc bấm để chọn file<br>
@@ -330,9 +330,9 @@ kbd{background:#eef2f7;border-radius:4px;padding:0 5px;font-size:12px}
   <div class="card">
     <div class="row" style="justify-content:space-between">
       <h2 style="margin:0">🧾 Bảng giá vốn hóa đơn (hàng đang bán)</h2>
-      <button class="btn pri" data-import="inv">➕ Nhập bảng giá vốn hóa đơn</button>
+      <div class="row"><button class="btn pri" id="kvPriceBtn">📦 Lấy bảng giá &amp; tồn kho KiotViet</button><button class="btn" data-import="inv" title="Nhập tay từ file Excel">➕ Nhập từ file</button></div>
     </div>
-    <p class="small muted">Dùng để tính giá vốn hóa đơn, và để đối chiếu mã nào trong bộ nhựa <b>chưa mở bán</b>. Phiên viền xanh là phiên mặc định.</p>
+    <p class="small muted">Lấy thẳng từ KiotViet (giá vốn, giá bán, tên hàng, tồn kho) bằng nút bên phải: bảng giá mặc định được thay bằng dữ liệu mới nhất. Dùng để tính giá vốn hóa đơn, lấy tên hàng cho bộ nhựa và đối chiếu mã nào <b>chưa mở bán</b>. Phiên viền xanh là phiên mặc định.</p>
     <div class="sess" id="priceSessInv"></div>
   </div>
   <div class="card">

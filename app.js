@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -368,7 +368,7 @@ const cellNum = (sh, r, c) => c == null ? null : parseNum((sh.raw[r] || [])[c]);
  * kind: 'price' | 'invoice' | 'kit'
  * trả về { sheetIdx, headerRow, map, name, perSheet } hoặc null
  */
-function mappingDialog({ kind, sheets, fileName, title }) {
+function mappingDialog({ kind, sheets, fileName, title, auto }) {
   const fields = { price: ['code', 'name', 'cost', 'sell'], invoice: ['code', 'qty', 'name', 'sell'], kit: ['kit', 'code', 'name', 'qty', 'cost'] }[kind];
   const required = { price: ['code', 'cost'], invoice: ['code'], kit: ['code'] }[kind];
   const st = { sheetIdx: 0, headerRow: 0, map: {}, perSheet: false };
@@ -389,6 +389,8 @@ function mappingDialog({ kind, sheets, fileName, title }) {
   if (kind === 'kit' && sheets.length > 1 && st.map.kit == null) st.perSheet = true;
   // hóa đơn nhận đủ cột thì tính luôn, không hỏi lại
   if (kind === 'invoice' && st.headerRow >= 0 && st.map.code != null && st.map.qty != null) return Promise.resolve({ ...st, name: fileName });
+  // tự lấy từ KiotViet: nhận đủ cột Mã hàng + Giá vốn thì lưu luôn, không hỏi
+  if (auto && st.headerRow >= 0 && st.map.code != null && st.map.cost != null) return Promise.resolve({ ...st, name: fileName });
 
   const defName = fileName.replace(/\.[^.]+$/, '');
   const body = document.createElement('div');
@@ -630,14 +632,15 @@ function setupDrop(el, onFile) {
 /* ================= BẢNG GIÁ VỐN ================= */
 const KIND_LABEL = { inv: 'hóa đơn (hàng đang bán)', kit: 'bộ nhựa' };
 const sessKind = p => p.kind || 'inv';
-async function importPrices(file, replaceId, kind = 'inv') {
-  let wb;
-  try { wb = await readWorkbook(file); } catch (e) { console.error(e); return toast('Không đọc được file: ' + file.name, 'bad'); }
+async function importPrices(file, replaceId, kind = 'inv', opt = {}) {
+  let wb = opt.wb;
+  if (!wb) try { wb = await readWorkbook(file); } catch (e) { console.error(e); return toast('Không đọc được file: ' + file.name, 'bad'); }
   if (!wb.sheets.length) return toast('File không có dữ liệu', 'bad');
   const old = replaceId ? S.prices.find(p => p.id === replaceId) : null;
   if (old) kind = sessKind(old);
-  const r = await mappingDialog({ kind: 'price', sheets: wb.sheets, fileName: old ? old.name + '.x' : file.name, title: old ? `Cập nhật phiên “${esc(old.name)}”` : `Nhập bảng giá vốn ${KIND_LABEL[kind]}` });
+  const r = await mappingDialog({ kind: 'price', sheets: wb.sheets, fileName: old ? old.name + '.x' : file.name, title: old ? `Cập nhật phiên “${esc(old.name)}”` : `Nhập bảng giá vốn ${KIND_LABEL[kind]}`, auto: opt.auto });
   if (!r) return;
+  if (opt.auto) r.name = old ? old.name : 'KiotViet';
   const sh = wb.sheets[r.sheetIdx];
   const items = []; let noCost = 0;
   for (let i = r.headerRow + 1; i < sh.raw.length; i++) {
@@ -655,8 +658,9 @@ async function importPrices(file, replaceId, kind = 'inv') {
   if (old) S.prices[S.prices.indexOf(old)] = sess; else S.prices.push(sess);
   if (!old && !S.prices.some(p => p.id === LS.get('defPrice.' + kind))) LS.set('defPrice.' + kind, sess.id);
   if (!old && kind === 'kit' && !S.prices.some(p => p.id === LS.get('kitPrice'))) LS.set('kitPrice', sess.id);
-  toast(`Đã lưu ${items.length.toLocaleString('vi-VN')} sản phẩm vào phiên “${sess.name}”${noCost ? ` (${noCost} dòng không có giá)` : ''}`, 'ok', 4000);
+  if (!opt.auto) toast(`Đã lưu ${items.length.toLocaleString('vi-VN')} sản phẩm vào phiên “${sess.name}”${noCost ? ` (${noCost} dòng không có giá)` : ''}`, 'ok', 4000);
   refreshAll();
+  return items.length;
 }
 
 function renderPriceList(kind, el) {
@@ -1059,19 +1063,21 @@ function computeKit(kit) {
   const src = kitPriceSource();
   const ix = src && src !== 'file' ? priceIndex(src) : null;
   const sx = kitSaleSource() ? priceIndex(kitSaleSource()) : null;
+  const kx = sx || priceIndex(defaultPriceId('inv'));
   let total = 0, miss = 0, notSold = 0, short = 0;
   const rows = kit.parts.map((p, i) => {
     let cost = p.cost, from = 'file', it = null;
     if (ix) { it = lookup(ix, p.code); cost = it && it.cost != null ? it.cost : null; from = 'table'; }
     if (p.manual != null && cost == null) { cost = p.manual; from = 'manual'; }
     if (cost == null) miss++;
-    const sold = sx ? !!lookup(sx, p.code) : true;
+    const kv = kx ? lookup(kx, p.code) : null;
+    const sold = sx ? !!(sx === kx ? kv : lookup(sx, p.code)) : true;
     if (!sold) notSold++;
     const stock = stockOf(p.code);
     if (loadStock() && (!sold || stock == null || stock < p.qty)) short++;
     const amount = cost != null ? cost * p.qty : null;
     if (amount != null) total += amount;
-    return { stock,  i, p, cost, amount, from, sold, name: p.name || (it && it.name) || '' };
+    return { stock,  i, p, cost, amount, from, sold, name: (kv && kv.name) || p.name || (it && it.name) || '' };
   });
   return { rows, total, miss, notSold, short };
 }
@@ -1463,17 +1469,21 @@ async function loadStockFile(file) {
       }
       STOCK = { at: file.lastModified || Date.now(), fileName: file.name, n, map };
       try { LS.set('stock', STOCK); } catch (e) { toast('Không lưu được tồn kho: ' + e.message, 'bad'); }
+      // cùng file đó có Giá vốn, Giá bán, Tên hàng: thay luôn bảng giá hóa đơn đang dùng
+      let np = null;
+      try { busy('Đang cập nhật bảng giá…'); np = await importPrices(file, defaultPriceId('inv'), 'inv', { wb: r, auto: true }); } catch (e) { console.error(e); } finally { busy(null); }
       renderStockBtn();
       if (S.kitView) renderKitDetail(); else renderKits();
-      return toast(`Đã lấy tồn kho ${n.toLocaleString('vi-VN')} mã (file xuất lúc ${fmtTime(STOCK.at)})`, 'ok', 4500);
+      return toast(`Đã cập nhật từ KiotViet: tồn kho ${n.toLocaleString('vi-VN')} mã${np ? ` và bảng giá ${np.toLocaleString('vi-VN')} sản phẩm` : ' (bảng giá chưa cập nhật được: file thiếu cột Giá vốn)'}. File xuất lúc ${fmtTime(STOCK.at)}.`, np ? 'ok' : 'bad', 6000);
     }
   }
   toast('File này không có cột “Mã hàng” và “Tồn kho”. Hãy dùng file Danh sách hàng hóa xuất từ KiotViet.', 'bad', 6000);
 }
 function renderStockBtn() {
-  const st = loadStock(), b = $('#stockBtn'); if (!b) return;
-  b.innerHTML = st ? `🔄 Cập nhật tồn kho mới nhất <span style="font-weight:400;opacity:.75">(đang là lúc ${fmtTime(st.at)})</span>` : '📦 Lấy tồn kho';
-  b.title = st ? `Tồn kho đang dùng lấy lúc ${fmtTime(st.at)}. Bấm để lấy lại tồn kho mới nhất từ KiotViet.` : 'Lấy tồn kho mới nhất từ KiotViet';
+  const st = loadStock();
+  const html = st ? `🔄 Cập nhật bảng giá &amp; tồn kho KiotViet <span style="font-weight:400;opacity:.75">(đang là lúc ${fmtTime(st.at)})</span>` : '📦 Lấy bảng giá &amp; tồn kho KiotViet';
+  const title = st ? `Bảng giá và tồn kho đang dùng lấy lúc ${fmtTime(st.at)}. Bấm để lấy lại mới nhất từ KiotViet.` : 'Lấy bảng giá (giá vốn, giá bán, tên hàng) và tồn kho mới nhất từ KiotViet';
+  $$('#stockBtn, #kvPriceBtn').forEach(x => { x.innerHTML = html; x.title = title; });
 }
 const stockCell = r => !loadStock() ? '' : !r.sold ? `<span class="tag out" title="Mã này chưa mở bán">${r.stock > 0 ? fmtQ(r.stock) + ' · ' : ''}Chưa bán</span>` : r.stock == null ? '<span class="tag out" title="Không thấy mã này trong KiotViet">Không có</span>' : r.stock <= 0 ? '<span class="tag out">Hết</span>' : r.stock < r.p.qty ? `<span class="tag out">${fmtQ(r.stock)}</span>` : fmtQ(r.stock);
 function kitLookup(code) {
@@ -1773,7 +1783,7 @@ async function init() {
   $('.brand').onclick = toTop; $('#topBtn').onclick = toTop;
   const onScroll = () => $('#topBtn').classList.toggle('show', window.scrollY > 400);
   window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
-  $('#stockBtn').onclick = fetchStock; renderStockBtn();
+  $('#stockBtn').onclick = fetchStock; $('#kvPriceBtn').onclick = fetchStock; renderStockBtn();
   $('#updBtn').title = `Đang dùng v${APP_VERSION}. Bấm để kiểm tra bản mới.`;
   $('#kitImport').onclick = async () => { const f = await pickFile(); if (f) importKits(f); };
   S.kitLine = LS.get('kitLine', '');
