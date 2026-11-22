@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -81,7 +81,7 @@ async function selfUpdate(tag) {
   } catch { }
   busy('Đang tải bản mới…');
   try {
-    let files = ['index.html', 'app.js', 'sw.js', 'manifest.json', 'icon.svg', 'HUONG-DAN.md', 'README.md', 'lib/xlsx.full.min.js', 'lib/jszip.min.js'];
+    let files = ['index.html', 'app.js', 'sw.js', 'manifest.json', 'icon.svg', 'HUONG-DAN.md', 'README.md', 'lib/xlsx.full.min.js', 'lib/jszip.min.js', 'tonkho/gkm-tonkho.ps1', 'tonkho/chay-an.vbs', 'tonkho/cai-dat.bat', 'tonkho/go-cai-dat.bat'];
     try {
       const r = await fetch(`https://api.github.com/repos/${REPO}/git/trees/${encodeURIComponent(tag)}?recursive=1`, { cache: 'no-store' });
       if (r.ok) files = (await r.json()).tree.filter(x => x.type === 'blob' && !x.path.startsWith('.')).map(x => x.path);
@@ -1329,7 +1329,57 @@ async function newestStockFile(dir) {
   }
   return best;
 }
+/* ===== Lấy tồn kho tự động qua chương trình GKM Tồn kho (thư mục tonkho, chạy nền trên máy) ===== */
+const TK = 'http://127.0.0.1:47321';
+async function tkPing() {
+  try { const r = await fetch(TK + '/ping', { cache: 'no-store', signal: AbortSignal.timeout(2500) }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+async function kvShop(ask) {
+  let shop = LS.get('kvShop', '');
+  if (!shop || ask) {
+    const v = await promptBox('Địa chỉ KiotViet của cửa hàng', 'Phần đầu địa chỉ trang KiotViet, ví dụ trang <b>abc.kiotviet.vn</b> thì gõ <b>abc</b>', shop);
+    if (v == null) return null;
+    shop = String(v).trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\.kiotviet\.vn.*$/, '').replace(/[^a-z0-9-]/g, '');
+    if (!shop) return null;
+    LS.set('kvShop', shop);
+  }
+  return shop;
+}
+async function stockAuto() {
+  const shop = await kvShop(false); if (!shop) return;
+  busy('Đang vào KiotViet lấy tồn kho… (khoảng 20 – 60 giây)');
+  let r;
+  try { r = await fetch(`${TK}/export?shop=${encodeURIComponent(shop)}`, { cache: 'no-store', signal: AbortSignal.timeout(240000) }); }
+  catch (e) { busy(null); return toast('Không lấy được tồn kho: ' + (e.name === 'TimeoutError' ? 'quá lâu không xong' : e.message), 'bad', 5000); }
+  if (r.status === 409) {
+    busy(null);
+    const go = await modal({ title: '🔑 Cần đăng nhập KiotViet', body: `<p style="margin-top:0">Chương trình lấy tồn kho dùng một cửa sổ Edge <b>riêng</b> (không đụng tới Chrome anh đang dùng). Cửa sổ đó chưa đăng nhập KiotViet hoặc đã hết hạn đăng nhập.</p>
+      <p>Bấm <b>Mở cửa sổ đăng nhập</b>, đăng nhập KiotViet <b>${esc(shop)}</b> trong cửa sổ hiện ra (nhớ tích <i>Duy trì đăng nhập</i> nếu có), rồi <b>đóng cửa sổ đó</b> và bấm lại nút Lấy tồn kho.</p>`,
+      buttons: [{ text: 'Đổi địa chỉ cửa hàng', value: 'shop' }, { text: 'Mở cửa sổ đăng nhập', value: 'login', cls: 'pri' }] });
+    if (go === 'shop') { await kvShop(true); return; }
+    if (go === 'login') { try { await fetch(`${TK}/login?shop=${encodeURIComponent(shop)}`, { cache: 'no-store' }); } catch { } }
+    return;
+  }
+  if (!r.ok) {
+    busy(null);
+    let m = 'HTTP ' + r.status; try { m = (await r.json()).message || m; } catch { }
+    return toast('Không lấy được tồn kho: ' + m, 'bad', 6000);
+  }
+  const blob = await r.blob();
+  let name = 'DanhSachSanPham.xlsx'; try { name = decodeURIComponent(r.headers.get('X-File-Name') || name); } catch { }
+  busy(null);
+  await loadStockFile(new File([blob], name, { lastModified: Date.now() }));
+}
 async function fetchStock() {
+  if (await tkPing()) return stockAuto();
+  const how = await modal({ title: '📦 Lấy tồn kho', body: `<p style="margin-top:0"><b>Chương trình GKM Tồn kho chưa chạy trên máy này.</b> Chương trình giúp app tự vào KiotViet lấy tồn kho mới nhất (dùng cửa sổ Edge riêng, không đụng Chrome của anh).</p>
+    <p>Cài một lần: mở thư mục app, vào thư mục <b>tonkho</b>, bấm đúp file <b>cai-dat.bat</b>. Xong quay lại bấm nút Lấy tồn kho.</p>
+    <p class="small muted" style="margin-bottom:0">Hoặc dùng cách cũ: xuất file Danh sách hàng hóa từ KiotViet rồi lấy từ thư mục Tải về.</p>`,
+    buttons: [{ text: 'Dùng file trong Tải về', value: 'file' }, { text: 'Đã cài, thử lại', value: 'retry', cls: 'pri' }] });
+  if (how === 'retry') { if (await tkPing()) return stockAuto(); return toast('Vẫn chưa thấy chương trình GKM Tồn kho chạy. Hãy bấm đúp tonkho\\cai-dat.bat trong thư mục app.', 'bad', 6000); }
+  if (how === 'file') return fetchStockFromDownloads();
+}
+async function fetchStockFromDownloads() {
   let file = null;
   if (typeof window.showDirectoryPicker === 'function') {
     let dir = await metaGet('dlDir');
