@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '2.5';
+const APP_VERSION = '2.6';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -563,6 +563,25 @@ async function compressImage(blob, max = 800) {
     const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(bmp, 0, 0, w, h);
     return await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.8));
   } catch { return null; }
+}
+/** Chép riêng ảnh xe đang xem vào bộ nhớ (để dán Zalo gửi khách); không chép được thì tải về */
+async function copyKitPhoto() {
+  const ck = curKit(); const img = ck && (ck.k.images[kdImgIdx] || ck.k.images[0]);
+  if (!img) return toast('Bộ nhựa này không có ảnh xe', 'bad');
+  let png = null;
+  try {
+    const bmp = await createImageBitmap(img), cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(bmp, 0, 0);
+    png = await new Promise(r => cv.toBlob(r, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    toast('Đã chép ảnh xe. Mở Zalo, bấm vào ô chat rồi nhấn Ctrl+V.', 'ok', 4500);
+  } catch (e) {
+    console.warn(e);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(png || img);
+    a.download = 'AnhXe_' + strip(ck.k.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) + (png ? '.png' : '.jpg');
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    toast('Máy không cho chép ảnh tự động nên đã tải ảnh về, gửi file đó qua Zalo.', 'bad', 5000);
+  }
 }
 const urlCache = new WeakMap();
 function blobUrl(b) { if (!b) return ''; let u = urlCache.get(b); if (!u) { u = URL.createObjectURL(b); urlCache.set(b, u); } return u; }
@@ -1199,6 +1218,7 @@ function renderKitDetail() {
   const img = k.images[kdImgIdx];
   const big = $('#kdImg');
   big.style.backgroundImage = img ? `url('${blobUrl(img)}')` : ''; big.textContent = img ? '' : '🏍️';
+  $('#kdCopyPhoto').classList.toggle('hide', !img);
   $('#kdThumbs').innerHTML = k.images.length > 1 ? k.images.map((b, i) => `<div data-i="${i}" class="${i === kdImgIdx ? 'on' : ''}" style="background-image:url('${blobUrl(b)}')"></div>`).join('') : '';
   $$('#kdThumbs div').forEach(d => d.onclick = () => { kdImgIdx = +d.dataset.i; renderKitDetail(); });
 
@@ -1776,6 +1796,7 @@ async function init() {
   $('#kitBack').onclick = closeKit;
   $('#kdPrint').onclick = printKitQuote;
   $('#kdImgQuote').onclick = quoteImage;
+  $('#kdCopyPhoto').onclick = copyKitPhoto;
   $$('[data-cust]').forEach(b => b.onclick = toggleCust);
   applyCust();
   renderAddRow($('#kdAdd'), kitLookup, async (code, qty) => {

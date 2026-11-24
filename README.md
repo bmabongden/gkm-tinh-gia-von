@@ -46,3 +46,6 @@ Tên chi tiết trong bộ nhựa lấy theo tên hàng trên KiotViet; mã nào
 
 ## Cập nhật bảng giá vốn bộ nhựa
 App chỉ dùng **một** bảng giá vốn bộ nhựa (bảng giá Honda). Ở đầu tab Bộ nhựa bấm **🔄 Cập nhật bảng giá vốn bộ nhựa**, chọn file mới: bảng cũ được thay luôn và các bộ nhựa tính lại theo giá mới. Dòng bên dưới ghi bảng giá cập nhật lúc nào, từ file nào.
+
+## Chép riêng ảnh xe
+Trong chi tiết bộ nhựa, ngay dưới ảnh xe có nút **📋 Chép ảnh xe**: chép đúng ảnh đang xem (không kèm danh sách mã), mở Zalo bấm vào ô chat rồi nhấn `Ctrl+V` để gửi khách. Có nhiều ảnh thì bấm ảnh nhỏ để chọn trước.
