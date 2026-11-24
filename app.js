@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '2.6';
+const APP_VERSION = '2.7';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1171,7 +1171,7 @@ function renderKits() {
       <div class="img">${img ? `<img loading="lazy" decoding="async" src="${blobUrl(img)}" alt="">` : '🏍️'}</div>
       <div class="b"><div class="nm">${esc(k.name)}</div>
       <div class="small muted">${k.parts.length} món${edited ? ' · <span style="color:var(--warn)">đã chỉnh sửa</span>' : ''}<span class="costcol">${c.miss ? ` · <span style="color:var(--bad)">${c.miss} thiếu giá</span>` : ''}${c.notSold ? ` · <span style="color:#7c3aed">${c.notSold} chưa mở bán</span>` : ''}</span>${loadStock() ? (c.short ? ` · <span style="color:#b91c1c;font-weight:600">${c.short} món thiếu hàng</span>` : ' · <span style="color:#15803d">đủ hàng</span>') : ''}</div>
-      <div class="tt costcol">${fmt(c.total)}</div><div class="tt sellcol">${(() => { const v = sellPrice(c.total, sellCfg('kit')); return v == null ? '' : fmt(v); })()}</div></div></div>`;
+      <div class="tt costcol"><span class="ttk">Giá vốn:</span> ${fmt(c.total)}</div><div class="tt sellcol">${(() => { const v = sellPrice(c.total, sellCfg('kit')); return v == null ? '<span class="ttk">Giá bán: chưa đặt</span>' : '<span class="ttk">Giá bán:</span> ' + fmt(v); })()}</div></div></div>`;
   }).join('');
   $$('.kit', grid).forEach(el => el.onclick = () => openKit(el.dataset.s, el.dataset.k));
 
@@ -1229,7 +1229,7 @@ function renderKitDetail() {
   $('#kdSellTotal').textContent = sellTotal == null ? 'Chưa đặt' : fmt(sellTotal);
   const sc = perPart ? 'sellcol' : 'hide';
   const added = new Set(diffLines(k.orig, k.parts).added.map(x => x.id));
-  $('#kdTable').innerHTML = `<thead><tr><th class="n">#</th><th>Mã hàng</th><th>Tên chi tiết</th><th class="n">SL</th>${loadStock() ? '<th class="n" title="Tồn kho KiotViet">Tồn</th>' : ''}<th class="n costcol">Giá vốn</th><th class="n costcol">Thành tiền</th><th class="n ${sc}">Đơn giá</th><th class="n ${sc}">Thành tiền</th><th class="costcol"></th><th class="costcol"></th></tr></thead>
+  $('#kdTable').innerHTML = `<thead><tr><th class="n">#</th><th>Mã hàng</th><th>Tên chi tiết</th><th class="n">SL</th>${loadStock() ? '<th class="n" title="Tồn kho KiotViet">Tồn</th>' : ''}<th class="n costcol">Giá vốn</th><th class="n costcol">Thành tiền (vốn)</th><th class="n ${sc}">Giá bán</th><th class="n ${sc}">Thành tiền (bán)</th><th class="costcol"></th><th class="costcol"></th></tr></thead>
   <tbody>${c.rows.map(r => `<tr class="${r.cost == null ? 'miss' : r.from === 'manual' ? 'manual' : ''}">
     <td class="n muted">${r.i + 1}</td>
     <td class="code">${esc(r.p.code)}${added.has(r.p.id) ? ' <span class="tag info costcol">mới thêm</span>' : ''}</td>
@@ -1241,7 +1241,7 @@ function renderKitDetail() {
     <td class="n ${sc}">${fmt(ps(r))}</td><td class="n ${sc}"><b>${ps(r) == null ? '—' : fmt(ps(r) * r.p.qty)}</b></td>
     <td class="costcol" style="white-space:nowrap">${r.sold ? '' : `${loadStock() ? '' : '<span class="tag sold" title="Mã này không có trong bảng hàng đang bán: cần tìm mã thay thế">Chưa mở bán</span> '}<button class="btn sm" data-alt="${r.i}" title="Tìm mã thay thế trong hàng đang bán">🔍 Mã thay thế</button>`}</td>
     <td class="costcol"><button class="btn sm bad" data-del="${r.i}" title="Bớt món này">✕</button></td></tr>`).join('')}</tbody>
-  <tfoot><tr><td></td><td colspan="2"><span class="costcol">TỔNG GIÁ VỐN BỘ</span><span class="sellcol">TỔNG CẢ BỘ</span></td><td class="n">${fmtQ(k.parts.reduce((a, p) => a + p.qty, 0))}</td>${loadStock() ? '<td></td>' : ''}<td class="costcol"></td><td class="n costcol">${fmt(c.total)}</td><td class="${sc}"></td><td class="n sellcol">${sellTotal == null ? '' : fmt(sellTotal)}</td><td class="costcol"></td><td class="costcol"></td></tr></tfoot>`;
+  <tfoot><tr><td></td><td colspan="2"><span class="costcol">TỔNG GIÁ VỐN BỘ</span><span class="sellcol">TỔNG GIÁ BÁN CẢ BỘ</span></td><td class="n">${fmtQ(k.parts.reduce((a, p) => a + p.qty, 0))}</td>${loadStock() ? '<td></td>' : ''}<td class="costcol"></td><td class="n costcol">${fmt(c.total)}</td><td class="${sc}"></td><td class="n sellcol">${sellTotal == null ? '' : fmt(sellTotal)}</td><td class="costcol"></td><td class="costcol"></td></tr></tfoot>`;
   $$('#kdTable input.cost').forEach(inp => inp.onchange = async () => {
     k.parts[+inp.dataset.i].manual = parseNum(inp.value); await saveKit(s); renderKitDetail();
   });
