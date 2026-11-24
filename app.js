@@ -28,7 +28,7 @@ function makeMatcher(q, minCodeTok = 1) {
     return toks.every((t, i) => h.includes(t) || (tc[i].length >= minCodeTok && tc[i] && lcs.some(c => c.includes(tc[i]))));
   };
 }
-const APP_VERSION = '2.7';
+const APP_VERSION = '2.8';
 const REPO = 'bmabongden/gkm-tinh-gia-von';
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(Number);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -591,7 +591,10 @@ const OPS = { '+': (a, b) => a + b, '-': (a, b) => a - b, '*': (a, b) => a * b, 
 const OP_LABEL = { '+': '+', '-': '−', '*': '×', '/': '÷', '%': '+%' };
 // v2.5: mặc định phép nhân, bỏ làm tròn (đưa cấu hình cũ về phép × một lần)
 if (!LS.get('sellV25')) { for (const c of ['inv', 'kit']) { const o = LS.get('sell.' + c); if (o) LS.set('sell.' + c, { op: '*', val: o.op === '*' ? o.val : '' }); } LS.set('sellV25', 1); }
-function sellCfg(ctx) { const c = LS.get('sell.' + ctx, { op: '*', val: '' }); return OPS[c.op] ? c : { ...c, op: '*' }; }
+function sellCfg(ctx) {
+  if (staffLocked()) return { op: '*', val: staffCfg().k || '1,3' };
+  const c = LS.get('sell.' + ctx, { op: '*', val: '' }); return OPS[c.op] ? c : { ...c, op: '*' };
+}
 function sellPrice(cost, cfg) {
   const v = parseNum(cfg.val);
   if (cost == null || v == null) return null;
@@ -1370,17 +1373,38 @@ async function openSettings() {
     </div>
     <p class="small muted" style="margin:12px 0 0">Bấm nút sẽ mở một cửa sổ Edge <b>riêng</b> (không đụng tới Chrome đang dùng). Đăng nhập xong thì <b>đóng cửa sổ đó</b>, từ sau bấm 📦 Lấy tồn kho là app tự lấy. <i>Đổi tài khoản</i> sẽ đăng xuất tài khoản cũ trong cửa sổ riêng đó rồi mở trang đăng nhập.</p>
     <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0 12px">
-    <div style="font-weight:700;margin-bottom:8px">🔒 Mật khẩu hiện giá vốn</div>
+    ${staffLocked() ? `<div style="font-weight:700;margin-bottom:8px">👥 Máy nhân viên</div>
+    <p class="small muted" style="margin:0 0 8px">Máy này đang ở chế độ nhân viên: chỉ xem bộ nhựa, giá bán và tồn kho.</p>
+    <button class="btn pri" data-sunlock>🔓 Mở khóa quản lý</button>` : `<div style="font-weight:700;margin-bottom:8px">🔒 Mật khẩu hiện giá vốn</div>
     <div data-pwbox></div>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0 12px">
+    <div style="font-weight:700;margin-bottom:8px">👥 Máy nhân viên</div>
+    <div data-staffbox></div>
     <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0 10px">
-    <div class="row" style="justify-content:space-between"><div><div style="font-weight:700">🔄 Cập nhật app</div><div class="small muted">Đang dùng v${APP_VERSION}</div></div><button class="btn" data-upd>Kiểm tra bản mới</button></div>`;
+    <div class="row" style="justify-content:space-between"><div><div style="font-weight:700">🔄 Cập nhật app</div><div class="small muted">Đang dùng v${APP_VERSION}</div></div><button class="btn" data-upd>Kiểm tra bản mới</button></div>`}`;
   await modal({
     title: '⚙️ Cài đặt', body, buttons: [{ text: 'Xong', cls: 'pri', value: true }],
     onOpen: async mb => {
-      $('[data-upd]', mb).onclick = () => { $('[data-x]', mb.closest('.modal')).click(); checkUpdate(); };
+      const closeM = () => $('[data-x]', mb.closest('.modal')).click();
+      if (staffLocked()) { $('[data-sunlock]', mb).onclick = async () => { closeM(); if (await staffUnlock()) { LS.set('cust', false); applyCust(); rerender(); } }; }
+      else {
+      $('[data-upd]', mb).onclick = () => { closeM(); checkUpdate(); };
+      const sb = $('[data-staffbox]', mb);
+      const drawStaff = () => {
+        const c = staffCfg();
+        sb.innerHTML = c.on ? `<p class="small muted" style="margin:0 0 8px">✅ Đang bật. Khi khóa, nhân viên chỉ thấy tab Bộ nhựa, giá bán (giá vốn × <b>${esc(c.k || '1,3')}</b>) và tồn kho. Tự khóa sau 15 phút không dùng hoặc khi đóng app.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-sk>✏️ Đổi hệ số</button><button class="btn" data-spw>🔑 Đổi mật khẩu quản lý</button><button class="btn bad" data-soff>Tắt chế độ</button></div>`
+          : `<p class="small muted" style="margin:0 0 8px">Dùng cho máy của nhân viên: không có mật khẩu quản lý thì chỉ xem được bộ nhựa, giá bán và tồn kho; không xem được giá vốn, không vào được Hóa đơn, không sửa được bảng giá.</p><button class="btn pri" data-son>👥 Bật chế độ máy nhân viên</button>`;
+        if (!c.on) { $('[data-son]', sb).onclick = async () => { if (await staffEnable()) drawStaff(); }; return; }
+        $('[data-sk]', sb).onclick = async () => { const k = await promptBox('Hệ số giá bán cho nhân viên xem', 'Giá bán = giá vốn × (vd 1,3)', c.k || '1,3'); if (k == null) return; if (parseNum(k) == null) return toast('Hệ số không hợp lệ', 'bad'); LS.set('staff', { ...staffCfg(), k: String(k).trim() }); drawStaff(); toast('Đã lưu hệ số', 'ok'); };
+        $('[data-spw]', sb).onclick = async () => { const pw = await askNewStaffPw('Đổi mật khẩu quản lý'); if (!pw) return; LS.set('staff', { ...staffCfg(), h: pwHash(pw) }); toast('Đã đổi mật khẩu quản lý', 'ok'); };
+        $('[data-soff]', sb).onclick = async () => { if (!await confirmBox('Tắt chế độ máy nhân viên? Máy này sẽ dùng đủ chức năng như máy quản lý, không cần mật khẩu.', 'Tắt', false)) return; LS.set('staff', { ...staffCfg(), on: false }); setStaffUntil(0); applyCust(); drawStaff(); toast('Đã tắt chế độ máy nhân viên', 'ok'); };
+      };
+      drawStaff();
+      }
       const box = $('[data-pwbox]', mb);
       const drawPw = () => {
-        if (LS.get('cust', false) && costPws().length) {
+        if (isCust() && costPws().length) {
           box.innerHTML = `<p class="small muted" style="margin:0 0 8px">Đang ẩn giá vốn. Muốn xem hoặc sửa mật khẩu thì mở khóa trước.</p><button class="btn" data-unlock>🔓 Mở khóa</button>`;
           $('[data-unlock]', box).onclick = async () => { if (await askCostPw()) { LS.set('cust', false); applyCust(); S.kitView ? renderKitDetail() : renderKits(); drawPw(); } };
           return;
@@ -1391,7 +1415,7 @@ async function openSettings() {
         $('[data-pw]', box).onchange = e => { const l = [...new Set(e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean))]; LS.set('costPw', l); toast(l.length ? `Đã lưu ${l.length} mật khẩu` : 'Đã bỏ mật khẩu', 'ok', 2500); };
         $('[data-pwhint]', box).onchange = e => LS.set('costPwHint', e.target.value.trim());
       };
-      drawPw();
+      if (box) drawPw();
       const inp = $('[data-shop]', mb), st = $('[data-st]', mb);
       const save = () => { const v = cleanShop(inp.value); if (v) { LS.set('kvShop', v); inp.value = v; } else inp.value = kvShop(); };
       inp.onchange = save;
@@ -1663,14 +1687,88 @@ async function forgotCostPw() {
   return true;
 }
 async function toggleCust() {
+  if (staffLocked()) { if (await staffUnlock()) { LS.set('cust', false); applyCust(); rerender(); } return; }
   const on = !!LS.get('cust', false);
   if (on && !await askCostPw()) return;
-  LS.set('cust', !on); applyCust(); S.kitView ? renderKitDetail() : renderKits();
+  LS.set('cust', !on); applyCust(); rerender();
 }
+const rerender = () => { S.kitView ? renderKitDetail() : renderKits(); };
+const isCust = () => staffLocked() || !!LS.get('cust', false);
 function applyCust() {
-  const on = !!LS.get('cust', false);
+  const on = isCust(), lk = staffLocked();
   document.body.classList.toggle('cust', on);
-  $$('[data-cust]').forEach(b => { b.classList.toggle('on', on); b.textContent = on ? '👁 Hiện giá vốn' : '🙈 Ẩn giá vốn'; b.title = on ? 'Đang ở chế độ cho khách xem: giá vốn bị ẩn' : 'Ẩn giá vốn để đưa màn hình cho khách xem (chỉ hiện giá bán)'; });
+  document.body.classList.toggle('staff', lk);
+  $('#lockBtn').classList.toggle('hide', !(staffCfg().on && !lk));
+  if (lk) showTab('kits');
+  $$('[data-cust]').forEach(b => {
+    b.classList.toggle('on', on);
+    b.textContent = lk ? '🔓 Quản lý' : on ? '👁 Hiện giá vốn' : '🙈 Ẩn giá vốn';
+    b.title = lk ? 'Máy nhân viên: nhập mật khẩu quản lý để xem giá vốn và dùng đủ chức năng' : on ? 'Đang ở chế độ cho khách xem: giá vốn bị ẩn' : 'Ẩn giá vốn để đưa màn hình cho khách xem (chỉ hiện giá bán)';
+  });
+}
+
+/* ===== Chế độ máy nhân viên: không mật khẩu chỉ xem bộ nhựa, giá bán và tồn kho ===== */
+const STAFF_IDLE = 15 * 60 * 1000;
+const staffCfg = () => LS.get('staff', {}) || {};
+function pwHash(t) { // băm đơn giản để không lưu mật khẩu dạng chữ
+  let h1 = 0x811c9dc5, h2 = 0x1234567;
+  const str = 'gkm|' + String(t).trim();
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 + c, 2654435761) ^ (h2 >>> 13); }
+  return (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36);
+}
+const staffUntil = () => { try { return +sessionStorage.getItem('gkm.staffUntil') || 0; } catch { return 0; } };
+const setStaffUntil = v => { try { v ? sessionStorage.setItem('gkm.staffUntil', String(v)) : sessionStorage.removeItem('gkm.staffUntil'); } catch { } };
+function staffLocked() { return !!staffCfg().on && staffUntil() < Date.now(); }
+function staffLock() { setStaffUntil(0); applyCust(); rerender(); renderInvoice(); toast('Đã khóa. Máy đang ở chế độ nhân viên.', 'ok', 3000); }
+function staffTouch() { if (staffCfg().on && !staffLocked()) setStaffUntil(Date.now() + STAFF_IDLE); }
+const newRecCode = () => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r = ''; const b = crypto.getRandomValues(new Uint8Array(8)); b.forEach((x, i) => { r += a[x % a.length]; if (i === 3) r += '-'; }); return r; };
+async function showRecCode(code) {
+  await modal({ title: '🗝️ Mã khôi phục', body: `<p style="margin-top:0">Chụp lại hoặc ghi ra giấy, <b>cất riêng, không để ở máy nhân viên</b>. Khi quên mật khẩu quản lý, dùng mã này để đặt lại.</p>
+    <div style="font:700 30px Consolas,monospace;letter-spacing:.08em;text-align:center;padding:14px;border:2px dashed var(--pri);border-radius:12px">${code}</div>`, buttons: [{ text: 'Đã ghi lại', cls: 'pri', value: true }] });
+}
+/** Hỏi mật khẩu mới (2 lần) */
+async function askNewStaffPw(title) {
+  for (;;) {
+    const v = await modal({ title, body: `<label class="fld"><span>Mật khẩu quản lý</span><input type="password" data-npa autocomplete="new-password" autofocus></label>
+      <label class="fld" style="margin-top:8px"><span>Nhập lại</span><input type="password" data-npb autocomplete="new-password"></label>`,
+      buttons: [{ text: 'Hủy', value: null }, { text: 'Lưu', cls: 'pri', value: mb => [$('[data-npa]', mb).value.trim(), $('[data-npb]', mb).value.trim()] }] });
+    if (!v) return null;
+    if (!v[0]) { toast('Chưa nhập mật khẩu', 'bad'); continue; }
+    if (v[0] !== v[1]) { toast('Hai lần nhập không giống nhau', 'bad'); continue; }
+    return v[0];
+  }
+}
+async function staffEnable() {
+  const pw = await askNewStaffPw('👥 Bật chế độ máy nhân viên'); if (!pw) return false;
+  const k = await promptBox('Hệ số giá bán cho nhân viên xem', 'Giá bán = giá vốn × (vd 1,3)', staffCfg().k || '1,3');
+  if (k == null) return false;
+  if (parseNum(k) == null) { toast('Hệ số không hợp lệ', 'bad'); return false; }
+  const rec = newRecCode();
+  LS.set('staff', { on: true, h: pwHash(pw), r: pwHash(rec.replace('-', '')), k: String(k).trim() });
+  await showRecCode(rec);
+  setStaffUntil(Date.now() + STAFF_IDLE); applyCust();
+  toast('Đã bật chế độ máy nhân viên. Bấm 🔒 Khóa hoặc đóng app là nhân viên chỉ xem được giá bán và tồn kho.', 'ok', 6000);
+  return true;
+}
+async function staffUnlock() {
+  const c = staffCfg();
+  for (;;) {
+    const v = await modal({ title: '🔓 Mở khóa quản lý', body: `<label class="fld"><span>Mật khẩu quản lý</span><input type="password" autocomplete="off" autofocus></label>`,
+      buttons: [{ text: 'Quên mật khẩu?', value: 'forgot' }, { text: 'Hủy', value: null }, { text: 'Mở', cls: 'pri', value: mb => ({ pw: $('input', mb).value }) }] });
+    if (v == null) return false;
+    if (v === 'forgot') {
+      const code = await promptBox('Đặt lại bằng mã khôi phục', 'Mã khôi phục (vd ABCD-1234)', '');
+      if (!code) continue;
+      if (pwHash(code.toUpperCase().replace(/[^A-Z0-9]/g, '')) !== c.r) { toast('Mã khôi phục không đúng', 'bad', 3000); continue; }
+      const pw = await askNewStaffPw('Đặt mật khẩu quản lý mới'); if (!pw) continue;
+      const rec = newRecCode();
+      LS.set('staff', { ...c, h: pwHash(pw), r: pwHash(rec.replace('-', '')) });
+      await showRecCode(rec);
+      setStaffUntil(Date.now() + STAFF_IDLE); applyCust(); renderInvoice(); return true;
+    }
+    if (pwHash(v.pw) === c.h) { setStaffUntil(Date.now() + STAFF_IDLE); applyCust(); renderInvoice(); toast('Đã mở khóa. Tự khóa lại sau 15 phút không dùng hoặc khi đóng app.', 'ok', 4000); return true; }
+    toast('Sai mật khẩu', 'bad', 2500);
+  }
 }
 /** Làm mới: đưa mọi bộ nhựa về bản gốc (bỏ mã thay thế, thêm/bớt/SL), quên mã thay thế đã nhớ, xóa hóa đơn đang làm.
  *  Giữ nguyên bảng giá vốn, các phiên bộ nhựa gốc, ảnh xe và giá vốn tự điền tay. */
@@ -1723,6 +1821,7 @@ async function loadAll() {
 }
 function showTab(t) {
   if (!$('#tab-' + t)) t = 'invoice';
+  if (staffLocked()) t = 'kits';
   $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   $$('section.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + t));
   LS.set('tab', t);
@@ -1735,6 +1834,9 @@ async function init() {
   try { const inv = sessionStorage.getItem('gkm.invoice'); if (inv) S.invoice = JSON.parse(inv); } catch { }
 
   $$('#nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+  $('#lockBtn').onclick = staffLock;
+  ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, staffTouch, { capture: true, passive: true }));
+  setInterval(() => { if (staffCfg().on && staffLocked() && !document.body.classList.contains('staff')) { $$('.modal-bg').forEach(m => m.remove()); applyCust(); rerender(); renderInvoice(); toast('Đã tự khóa sau 15 phút không dùng', 'ok', 4000); } }, 20000);
   showTab(LS.get('tab', 'invoice'));
 
   // hóa đơn

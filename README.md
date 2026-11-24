@@ -49,3 +49,11 @@ App chỉ dùng **một** bảng giá vốn bộ nhựa (bảng giá Honda). Ở
 
 ## Chép riêng ảnh xe
 Trong chi tiết bộ nhựa, ngay dưới ảnh xe có nút **📋 Chép ảnh xe**: chép đúng ảnh đang xem (không kèm danh sách mã), mở Zalo bấm vào ô chat rồi nhấn `Ctrl+V` để gửi khách. Có nhiều ảnh thì bấm ảnh nhỏ để chọn trước.
+
+## Chế độ máy nhân viên
+Trên máy của nhân viên: vào **⚙️ Cài đặt** → *Máy nhân viên* → **👥 Bật chế độ máy nhân viên**, đặt mật khẩu quản lý và hệ số giá bán (mặc định 1,3). App hiện **mã khôi phục**: chụp lại, cất riêng.
+
+- Khi khóa, nhân viên chỉ thấy tab **Bộ nhựa**: ảnh xe, mã, số lượng, **tồn kho**, **giá bán** (giá vốn × hệ số). Vẫn dùng được nút lấy tồn kho KiotViet, phiếu nhặt, chép ảnh xe. Không thấy giá vốn, không vào Hóa đơn, không sửa bảng giá hay bộ nhựa.
+- Anh bấm **🔓 Quản lý** và nhập mật khẩu là dùng đủ chức năng. Bấm **🔒 Khóa** để khóa ngay; app cũng tự khóa sau 15 phút không dùng hoặc khi đóng app.
+- Quên mật khẩu: ở ô nhập bấm *Quên mật khẩu?* rồi nhập mã khôi phục để đặt mật khẩu mới.
+- Lưu ý: bảng giá vốn vẫn nằm trong máy nhân viên; mật khẩu chặn được người dùng bình thường nhưng không chặn được người rành máy tính tự mở dữ liệu trình duyệt.
